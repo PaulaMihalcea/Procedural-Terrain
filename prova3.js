@@ -30,7 +30,7 @@ function main() {
 
     camera.position.y = 0.8;
     camera.position.z = 1;
-    //camera.rotation.x = -1 * Math.PI / 180; // TODO
+    //camera.rotation.x = 1 * Math.PI / 180; // TODO
 
     // Fake camera
     let fakeCamera = camera.clone();
@@ -55,54 +55,29 @@ function main() {
     scene.background = new THREE.Color(0xffffff);
     scene.add(light);
 
-    // Plane 1
+    // Plane
     var geometry = new THREE.PlaneBufferGeometry(2, 2, 256, 256);
     var material = new THREE.MeshLambertMaterial({ color: 0x3c3951 });
+    var terrain = new THREE.Mesh(geometry, material);
+    terrain.rotation.x = -Math.PI / 2;
+    scene.add(terrain);
 
     var peak = 0.1;
     var smoothing = 0.3;
-
-    
-    var terrain = new THREE.Mesh(geometry, material);
-    terrain.rotation.x = -Math.PI / 2;
-    
-    scene.add(terrain);
-
     var vertices = terrain.geometry.attributes.position.array;
 
     for (var i = 0; i <= vertices.length; i += 3) {
         vertices[i + 2] = peak * noise.perlin2(
         vertices[i]/smoothing, 
         vertices[i+1]/smoothing
-        );
+    );
     }
-
     terrain.geometry.attributes.position.needsUpdate = true;
     terrain.geometry.computeVertexNormals();
-    
-
-    // Plane 2
-    var terrain2 = new THREE.Mesh(geometry, material);
-    terrain2.rotation.x = -Math.PI / 2;
-
-    
-    terrain2.position.x += 2;
-    //terrain2.position.y += 0.5;
-    
-    var vertices2 = terrain2.geometry.attributes.position.array;
-
-    for (var i = 0; i <= vertices2.length; i += 3) {
-        vertices2[i + 2] = peak * noise.perlin2(
-        vertices2[i]/smoothing, 
-        vertices2[i+1]/smoothing
-        );
-    }
-
-    terrain2.geometry.attributes.position.needsUpdate = true;
-    terrain2.geometry.computeVertexNormals();
 
 
-    scene.add(terrain2);
+
+
 
 
 
@@ -175,8 +150,8 @@ function main() {
         requestAnimationFrame(loop);
     }
     
-    //loop();
-    render();
+    loop();
+    // render();
 
 }
 
