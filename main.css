@@ -2,7 +2,6 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
-    background-color: grey;
  }
 
 canvas {
@@ -10,6 +9,6 @@ canvas {
 }
 
 #prova {
-    width: 100vw;
     height: 100vh;
+    width: 100vw;
  }
