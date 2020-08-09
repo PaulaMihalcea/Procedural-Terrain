@@ -36,6 +36,11 @@ function main() {
     let fakeCamera = camera.clone();
     camera.copy(fakeCamera);
 
+    // Stats
+    var stats = new Stats();
+    stats.showPanel( 0 );
+    document.body.appendChild( stats.dom );
+
     // Light
     const lightColor = 0xFFFFFF;
     const intensity = 1;
@@ -105,6 +110,29 @@ function main() {
 
     };
 
+    // Refresh vertices
+    function refreshVertices() {
+        var vertices = terrain.geometry.attributes.position.array;
+        for (var i = 0; i <= vertices.length; i += 3) {
+            vertices[i+2] = peak * noise.perlin2(
+                (terrain.position.x + vertices[i])/smoothing, 
+                (terrain.position.z + vertices[i+1])/smoothing
+            );
+        }
+        terrain.geometry.attributes.position.needsUpdate = true;
+        terrain.geometry.computeVertexNormals();
+    }
+
+    // Terrain movement
+    var clock = new THREE.Clock();
+    var movementSpeed = 1;
+    function update() {
+        var delta = clock.getDelta();
+        terrain.position.z += movementSpeed * delta;
+        camera.position.z += movementSpeed * delta;
+        refreshVertices();
+    }
+
     // Rendering
     function render() {
 
@@ -114,7 +142,16 @@ function main() {
 
     };
 
-    render();
+    function loop() {
+        stats.begin();
+        update();
+        render();
+        stats.end();
+        requestAnimationFrame(loop);
+    }
+    
+    loop();
+    // render();
 
 }
 
