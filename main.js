@@ -52,15 +52,16 @@ function main() {
     let terrainColor = 0x386653; // Terrain base color
 
     
-    // Terrain
+    // Terrain initialization
     var terrain = [];
 
     for (let k = 0; k < Math.pow(matrixDimensions, 2); k++) {
-        let i = Math.floor(k/matrixDimensions);
+        let i = Math.floor(k / matrixDimensions);
         let j = k % matrixDimensions;
-        console.log(i, j, k);
-        terrain[i] = addTile(i, j);
-        scene.add(terrain[i]);
+
+        terrain.push(addTile(i, j));
+
+        scene.add(terrain[k]);
     }
 
     // Camera
