@@ -19,24 +19,6 @@ function main() {
 
     document.getElementById('canvas').appendChild(renderer.domElement);
 
-    // Camera
-    const fov = 100; // TODO 45
-    const aspect = width / height;
-    const near = 0.1; // TODO 1
-    const far = 3000;
-    var cameraTarget = {x:0, y:0, z:0};
-
-    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-
-    camera.position.x = 0.5;
-    camera.position.y = 0.8;
-    camera.position.z = 2; // TODO 1
-    //camera.rotation.x = -1 * Math.PI / 180; // TODO
-
-    // Fake camera
-    let fakeCamera = camera.clone();
-    camera.copy(fakeCamera);
-
     // Stats
     var stats = new Stats();
     stats.showPanel(0);
@@ -59,15 +41,15 @@ function main() {
     // Terrain parameters
     noise.seed(6);
 
-    let maxHeight = 0.2; // Maximum terrain height
-    let smoothness = 0.3; // Terrain smoothness
+    let maxHeight = 160; // Maximum terrain height
+    let smoothness = 100; // Terrain smoothness
 
-    const tileOffset = 2;
-    let tileSize = 256;
+    const tileLength = 1000;
+    const tileSegments = 500;
     let terrainColor = 0x386653; // Terrain base color
 
     
-    // Plane matrix
+    // Terrain
     const attributes = 3;
 
     var geometry = []
@@ -88,16 +70,18 @@ function main() {
 
     for (var i = 0; i < 3; i++) {
         for (var j = 0; j < 3; j++) {
-            geometry[i][j] = new THREE.PlaneBufferGeometry(tileOffset, tileOffset, tileSize, tileSize);
-            material[i][j] = new THREE.MeshLambertMaterial({color: terrainColor});
+            geometry[i][j] = new THREE.PlaneBufferGeometry(tileLength, tileLength, tileSegments, tileSegments);
+            material[i][j] = new THREE.MeshLambertMaterial({color: getRandomColor()});
             
-            xOffset = tileOffset * i;
-            zOffset = tileOffset * j;
+            xOffset = tileLength * i;
+            zOffset = tileLength * j;
 
             terrain[i][j] = new THREE.Mesh(geometry[i][j], material[i][j]);
             
-            terrain[i][j].position.x += xOffset;
-            terrain[i][j].position.z += zOffset;
+            terrain[i][j].position.x += xOffset -= tileLength;
+            terrain[i][j].position.z += zOffset -= tileLength;
+
+            // console.log(i, j, terrain[i][j].position.x, terrain[i][j].position.z) // TODO
             
             terrain[i][j].rotation.x = -Math.PI / 2;
 
@@ -116,69 +100,22 @@ function main() {
         }
     }
 
+    // Camera
+    const fov = 45;
+    const aspect = width / height;
+    const near = 0.1;
+    const far = 10000;
 
+    var camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 
+    camera.position.set(0, 400, 0);
+    //camera.rotation.x = Math.PI; // TODO
 
+    camera.updateProjectionMatrix();
 
-
-
-
-    /*
-    // Plane 1
-    let geometry1 = new THREE.PlaneBufferGeometry(tileOffset, tileOffset, 256, 256);
-    let material1 = new THREE.MeshLambertMaterial({color: terrainColor});
-    let terrain1 = new THREE.Mesh(geometry1, material1);
-
-    terrain1.rotation.x = -Math.PI / 2;
-    terrain1.position.x = 10;
-
-    console.log(terrain1.position.x)
-    
-    scene.add(terrain1);
-
-    let vertices1 = terrain1.geometry.attributes.position.array;
-
-    //console.log(vertices)
-
-    for (let i = 0; i <= vertices1.length; i += 3) {
-        //console.log(vertices[i])
-        vertices1[i + 2] = noise.perlin2(vertices1[i]/smoothness, vertices1[i + 1]/smoothness) * maxHeight;
-    }
-
-    terrain1.geometry.attributes.position.needsUpdate = true;
-    terrain1.geometry.computeVertexNormals();
-    /*
-
-    // Plane 2
-    let geometry2 = new THREE.PlaneBufferGeometry(tileLength, tileLength, 256, 256);
-    let material2 = new THREE.MeshLambertMaterial({color: 0xfffff});
-    var terrain2 = new THREE.Mesh(geometry2, material2);
-    terrain2.rotation.x = -Math.PI / 2;
-
-    
-    terrain2.position.x += tileLength;
-    //terrain2.position.y += 0.5; // TODO
-    
-    var vertices2 = terrain2.geometry.attributes.position.array;
-
-    for (var i = 0; i <= vertices2.length; i += 3) {
-        vertices2[i + 2] = maxHeight * noise.perlin2(
-            (vertices2[i] + terrain2.position.x) /smoothness, 
-            (vertices2[i+1] + terrain2.position.y) /smoothness
-        );
-    }
-
-    terrain2.geometry.attributes.position.needsUpdate = true;
-    terrain2.geometry.computeVertexNormals();
-
-
-    scene.add(terrain2);
-    console.log(terrain2.position.x)
-    */
-
-
-
-
+    // Fake camera
+    let fakeCamera = camera.clone();
+    camera.copy(fakeCamera);
 
 
 
@@ -194,6 +131,17 @@ function main() {
 
     /************************** FUNCTIONS **************************/
 
+    // Random color (for debug purposes)
+    function getRandomColor() {
+        var letters = '0123456789abcdef';
+        var color = '#';
+        for (var i = 0; i < 6; i++) {
+          color += letters[Math.floor(Math.random() * 16)];
+        }
+
+        return color;
+      }
+
     // Event listeners
     window.addEventListener('resize', onWindowResize, false);
 
@@ -208,34 +156,44 @@ function main() {
 
     // Refresh vertices
     function refreshVertices() {
-        var vertices = terrain.geometry.attributes.position.array;
-        for (var i = 0; i <= vertices.length; i += 3) {
-            vertices[i+2] = maxHeight * noise.perlin2(
-                (terrain.position.x + vertices[i])/smoothness, 
-                (terrain.position.z + vertices[i+1])/smoothness
-            );
+        for (var i = 0; i < 3; i++) {
+            for (var j = 0; j < 3; j++) {
+                vertices[i][j] = terrain[i][j].geometry.attributes.position.array;
+                for (let k = 0; k <= vertices[i][j].length; k += 3) {
+                    vertices[i][j][k + 2] = maxHeight * noise.perlin2(
+                        (terrain[i][j].position.x + vertices[k])/smoothness, 
+                        (terrain[i][j].position.z + vertices[k + 1])/smoothness
+                    );
+                }
+                terrain[i][j].geometry.attributes.position.needsUpdate = true;
+                terrain[i][j].geometry.computeVertexNormals();
+            }
         }
-        terrain.geometry.attributes.position.needsUpdate = true;
-        terrain.geometry.computeVertexNormals();
     }
 
     // Terrain movement
     var clock = new THREE.Clock();
     var movementSpeed = 1;
+
     function update() {
         var delta = clock.getDelta();
-        terrain.position.z += movementSpeed * delta;
-        camera.position.z += movementSpeed * delta;
-        refreshVertices();
+
+        for (var i = 0; i < 3; i++) {
+            for (var j = 0; j < 3; j++) {
+                terrain[i][j].position.z += 10;
+                //camera.position.z += movementSpeed * delta; // TODO
+                //camera.position.set(0, 0, ciao);
+                //camera.updateProjectionMatrix(); // TODO
+                //refreshVertices();
+            }
+        }
     }
 
     // Rendering
     function render() {
-
         requestAnimationFrame(render);
         controls.update();
         renderer.render(scene, fakeCamera);
-
     };
 
     function loop() {
@@ -246,7 +204,7 @@ function main() {
         requestAnimationFrame(loop);
     }
     
-    //loop();
+    loop();
     render();
 
 }
