@@ -19,7 +19,7 @@ importScripts("./perlin.js");
 
     let tile = addTile(e.data[6], e.data[7]);
 
-    self.postMessage([tile.position.x, tile.position.z, tile.geometry.attributes.position.array]);
+    self.postMessage([tile.geometry.attributes.position.array]);
     self.close();
 
 

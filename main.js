@@ -73,9 +73,11 @@ function main() {
 
     // Terrain creation
     let terrain = init();
+    let tileWorkersResults = [];
 
 
     /************************** PROVA WORKER **************************/
+    /*
     let worker = new Worker('tileWorker.js');
             
     worker.addEventListener('message', function(e) {
@@ -90,6 +92,7 @@ function main() {
     })
 
     worker.postMessage([PerlinSeed, maxHeight, smoothness, tileLength, tileSegments, terrainColor, -1, 0]);
+    */
 
 
     /************************** FUNCTIONS **************************/
@@ -173,21 +176,40 @@ function main() {
         return tile;
     }
 
+    // Get tile vertices
+    function setTileVertices(i, j, tileVertices) {      
+        
+        let xOffset = tileLength * i; // x axis offset (based on the tile's position in the matrix)
+        let zOffset = tileLength * j; // z axis offset (based on the tile's position in the matrix)
+
+        let xPos = xOffset -= tileLength; // x tile position (based on offset and tile length)
+        let zPos = zOffset -= tileLength; // z tile position (based on offset and tile length)
+        
+        for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Perlin noise)
+            tileVertices[k + 2] = noise.perlin2(
+                                    (tileVertices[k] + xPos) / smoothness,
+                                    (tileVertices[k + 1] - zPos) / smoothness)
+                                    * maxHeight;
+        }
+
+        return tileVertices;
+    }
+
     // Update (terrain movement)
     const movementSpeed = 0.25; // Terain movement speed
 
     let centralTile = matrixDimensions; // Central tile (the one that must be checked in order to generate/remove other tiles)
-    let iIndex = -1; // i index, needed for tile generation
+    let upperRow = -1; // i index, needed for tile generation
 
-    function update_old() { // TODO
+    function update() { // TODO
 
         // Automatically increase tile position
        for (let k = 0; k < terrain.length; k++) {
-               terrain[k].position.z += movementSpeed;
+            terrain[k].position.z += movementSpeed;
        }
 
        // Check central tile position and update terrain matrix accordingly
-       if ( (terrain[centralTile].position.z % (tileLength*3)) == 0) { // TODO Implementare controllo con una epsilon o in altro modo più furbo
+       if ( (terrain[centralTile].position.z > tileLength*2.5)) { // TODO Implementare controllo con una epsilon o in altro modo più furbo
 
            for (let k = 0; k < matrixDimensions; k++) {
                let u = k + centralTile + matrixDimensions; // Number of the tile that is going to be updated
@@ -207,15 +229,23 @@ function main() {
                let zPos = terrain[uR].position.z - tileLength; // New tile z position
 
                // Tile creation
-               terrain[u] = addTile(k, iIndex);
+               //terrain[u] = addTile(k, iIndex); // TODO
+
+               let tileVertices = terrain[u].geometry.attributes.position.array;
+
+               tileVertices = setTileVertices(k, upperRow, tileVertices);
+
                terrain[u].position.x = xPos;
                terrain[u].position.z = zPos;
+
+               terrain[u].geometry.attributes.position.needsUpdate = true; // Update tile vertices
+               terrain[u].geometry.computeVertexNormals(); // Update tile vertex normals
                
                scene.add(terrain[u]); // Add new tile                
            }
 
             // Update i index
-           iIndex--;
+           upperRow--;
        
             // Update central tile number
            centralTile = centralTile - matrixDimensions;
@@ -224,8 +254,10 @@ function main() {
                }
        }
    }
+   var ciao = new Array();
+    function update_mt() { // TODO
 
-    function update() { // TODO
+        
 
          // Automatically increase tile position
         for (let k = 0; k < terrain.length; k++) {
@@ -233,46 +265,25 @@ function main() {
         }
 
         // Check central tile position and update terrain matrix accordingly
-        if ( (terrain[centralTile].position.z % (tileLength*3)) == 0) { // TODO Implementare controllo con una epsilon o in altro modo più furbo
+        if ( (terrain[centralTile].position.z % (tileLength*2)) == 0) { // TODO Implementare controllo con una epsilon o in altro modo più furbo
 
             let tileWorkers = [];
-            var uS = [];
 
             for (let k = 0; k < matrixDimensions; k++) {
-                let u = k + centralTile + matrixDimensions; // Number of the tile that is going to be updated
-                let uR = u - matrixDimensions * (matrixDimensions - 1); // Number of the tile that is going to be removed (needed to get correct position for the new tile)
-    
-                if (u >= Math.pow(matrixDimensions, 2)) { // Correct tile number if larger than terrain array length
-                    u = k;
-                }
-
-                uS[k] = u;
-
-                if (uR < 0) { // Correct tile number if smaller than terrain array minimum index (0)
-                    uR = u + matrixDimensions;
-                }
-
-                scene.remove(terrain[u]); // Remove obsolete tile
-
-                let xPos = terrain[u].position.x; // New tile x position
-                let zPos = terrain[uR].position.z - tileLength; // New tile z position
-
                 tileWorkers[k] = new Worker('tileWorker.js');
 
-                tileWorkers[k].addEventListener('message', function(e) {            
-                    terrain[u].position.x = xPos;
-                    terrain[u].position.z = zPos;
-                    terrain[u].geometry.attributes.position.array = e.data[2];
+                tileWorkers[k].postMessage([PerlinSeed, maxHeight, smoothness, tileLength, tileSegments, terrainColor, k, upperRow]);
+
+                tileWorkers[k].addEventListener('message', function(e) {
+                    tileWorkersResults[k] = e.data[0];
+
+                    ciao[k] = e.data[0];
+
+
                 })
-
-                tileWorkers[k].postMessage([PerlinSeed, maxHeight, smoothness, tileLength, tileSegments, terrainColor, k, iIndex]);
             }
 
-            for (let k = 0; k < matrixDimensions; k++) {
-                scene.add(terrain[uS[k]]);
-            }
 
-            /*
             for (let k = 0; k < matrixDimensions; k++) {
                 let u = k + centralTile + matrixDimensions; // Number of the tile that is going to be updated
                 let uR = u - matrixDimensions * (matrixDimensions - 1); // Number of the tile that is going to be removed (needed to get correct position for the new tile)
@@ -290,17 +301,24 @@ function main() {
                 let xPos = terrain[u].position.x; // New tile x position
                 let zPos = terrain[uR].position.z - tileLength; // New tile z position
 
-                // Tile creation
-                terrain[u] = addTile(k, iIndex);
                 terrain[u].position.x = xPos;
                 terrain[u].position.z = zPos;
-                
-                scene.add(terrain[u]); // Add new tile
+
+
+                console.log(k, ciao[k])
+
+                if (typeof tileWorkersResults[k] != 'undefined'){
+                    terrain[u].geometry.attributes.position.array = tileWorkersResults[k];
+                }
+
+                terrain[u].geometry.attributes.position.needsUpdate = true; // Update tile vertices
+                terrain[u].geometry.computeVertexNormals(); // Update tile vertex normals
+
+                scene.add(terrain[u]);
             }
-            */
 
              // Update i index
-            iIndex--;
+            upperRow--;
         
              // Update central tile number
             centralTile = centralTile - matrixDimensions;
