@@ -285,7 +285,7 @@ function main() {
         if (axis == 'x'){
             for (let i = 0; i < matrixDimensions; i++) { // Automatically increase tile position
                 for (let j = 0; j < matrixDimensions; j++) {
-                    terrain[i][j].position.x = terrain[i][j].position.x + (movementSpeed * zDir);
+                    terrain[i][j].position.x = terrain[i][j].position.x + (movementSpeed * xDir);
                 }
             }
         }
@@ -305,29 +305,58 @@ function main() {
     let centralTileI = dist; // Central tile (the one that must be checked in order to generate/remove other tiles)
     let centralTileJ = dist;
     let upperRow = -1; // Current upper row index, needed for tile generation
-    let lowerRow = matrixDimensions; // Current lower row index, needed for tile generation
+    let leftColumn = -1;
 
     // Update function
     function update() { // TODO
 
         //autoMove('down');
 
-        //console.log('central tile i,j:', centralTileI, centralTileJ, 'central tile z position:', terrain[centralTileI][centralTileJ].position.z)
+        // Check central tile position and update terrain matrix accordingly (along x axis)
+        if ((terrain[centralTileI][centralTileJ].position.x > tileLength * maxDistance) || (terrain[centralTileI][centralTileJ].position.x < -tileLength * maxDistance)){
 
-        // Check central tile position and update terrain matrix accordingly (along z axis)
-        if ((terrain[centralTileI][centralTileJ].position.z > tileLength * maxDistance) || (terrain[centralTileI][centralTileJ].position.z < -tileLength * maxDistance)){
-
-            for (let i = 0; i < matrixDimensions; i++) {
-                //let j = (matrixDimensions - 1) - ((centralTileJ - dist + matrixDimensions) % matrixDimensions) // TODO manca dipendenza da zDir
-                let j = (centralTileJ -2 + matrixDimensions) % matrixDimensions
-
-                //console.log('i, j; i, jR:', i, j, '', i, jR)
+            for (let j = 0; j < matrixDimensions; j++) {
+                let i = (centralTileI - (2 * xDir) + matrixDimensions) % matrixDimensions;
 
                 scene.remove(terrain[i][j]); // Remove obsolete tile
 
+                let xPos = terrain[i][j].position.x + tileLength * matrixDimensions * -xDir; // New tile x position
+                let zPos = terrain[i][j].position.z; // New tile z position
+
+                // Tile update
+                let tileVertices = terrain[i][j].geometry.attributes.position.array;
+
+                terrain[i][j].position.x = xPos; // Update tile x position
+                terrain[i][j].position.z = zPos; // Update tile z position
                 
-                console.log('old z:', terrain[i][j].position.z, 'new z:', terrain[i][j].position.z + tileLength * matrixDimensions * -zDir)
-                //console.log(h, hR, k)
+                if (xDir == 1){
+                    tileVertices = getTileVertices(leftColumn, j, tileVertices); // Recalculate tile vertices
+                }
+                else if (xDir == -1){
+                    tileVertices = getTileVertices(leftColumn, j + matrixDimensions + 1, tileVertices); // Recalculate tile vertices
+                }
+
+                terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
+                terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
+
+                scene.add(terrain[i][j]); // Add new tile
+            }
+            
+            
+            // Update row index
+            leftColumn = leftColumn - xDir;
+
+            // Update central tile number
+            centralTileI = (centralTileI + (2 * xDir) + matrixDimensions) % matrixDimensions
+        }
+
+        // Check central tile position and update terrain matrix accordingly (along z axis)
+        else if ((terrain[centralTileI][centralTileJ].position.z > tileLength * maxDistance) || (terrain[centralTileI][centralTileJ].position.z < -tileLength * maxDistance)){
+
+            for (let i = 0; i < matrixDimensions; i++) {
+                let j = (centralTileJ - (2 * zDir) + matrixDimensions) % matrixDimensions;
+
+                scene.remove(terrain[i][j]); // Remove obsolete tile
 
                 let xPos = terrain[i][j].position.x; // New tile x position
                 let zPos = terrain[i][j].position.z + tileLength * matrixDimensions * -zDir; // New tile z position
@@ -342,14 +371,11 @@ function main() {
                     tileVertices = getTileVertices(i, upperRow, tileVertices); // Recalculate tile vertices
                 }
                 else if (zDir == -1){
-                    tileVertices = getTileVertices(i, lowerRow, tileVertices); // Recalculate tile vertices
+                    tileVertices = getTileVertices(i, upperRow + matrixDimensions + 1, tileVertices); // Recalculate tile vertices
                 }
 
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
-                
-
-               //let tileVertices = getTileVertices(i, upperRow, terrain[i][j].geometry.attributes.position.array); // Recalculate tile vertices
 
                 scene.add(terrain[i][j]); // Add new tile
             }
@@ -357,10 +383,9 @@ function main() {
             
             // Update row index
             upperRow = upperRow - zDir;
-            lowerRow = lowerRow - zDir;
 
             // Update central tile number
-            centralTileJ = (centralTileJ +2 + matrixDimensions) % (matrixDimensions);
+            centralTileJ = (centralTileJ + (2 * zDir) + matrixDimensions) % matrixDimensions
         }
     }
 

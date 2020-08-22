@@ -404,7 +404,7 @@ function main() {
 
                 scene.remove(terrain[h]); // Remove obsolete tile
 
-                //console.log('old z:', terrain[h].position.z, 'new z:', terrain[hR].position.z + tileLength * -zDir)
+                console.log('old z:', terrain[h].position.z, 'new z:', terrain[hR].position.z + tileLength * -zDir)
                 //console.log(h, hR, k)
 
                 let xPos = terrain[h].position.x; // New tile x position
