@@ -48,7 +48,7 @@ function main() {
 
     // Ambient light
     const ambientLightColor = 0x89a7f8; // Ambient light color
-    const ambientLightIntensity = 0.4; // Ambient light color opacity
+    const ambientLightIntensity = 0.3; // Ambient light intensity
 
     let ambientLight = new THREE.DirectionalLight(ambientLightColor, ambientLightIntensity); // Create ambient light
 
