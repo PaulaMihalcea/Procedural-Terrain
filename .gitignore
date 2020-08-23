@@ -1,2 +1,7 @@
 node_modules
 doc-2020-08-09-19-37-09.gif
+_delete
+.eslintrc
+package-lock.json
+package.json
+.gitignore
