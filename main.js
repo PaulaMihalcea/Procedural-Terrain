@@ -4,6 +4,8 @@ function main() {
 
     /************************** INITIALIZATION **************************/
 
+    let opacity = 0;
+
     // Generic constants & variables
     const matrixDimensions = 3; // Number of rows/columns of the terrain square matrix; must be 3 for the current parameters (larger dimensions are very slow)
     const totalTiles = Math.pow(matrixDimensions, 2); // Total number of tiles
@@ -46,7 +48,7 @@ function main() {
 
     // Ambient light
     const ambientLightColor = 0x89a7f8; // Ambient light color
-    const ambientLightIntensity = 0.2; // Ambient light color opacity
+    const ambientLightIntensity = 0.4; // Ambient light color opacity
 
     let ambientLight = new THREE.DirectionalLight(ambientLightColor, ambientLightIntensity); // Create ambient light
 
@@ -76,7 +78,7 @@ function main() {
 
     // Fog
     const fogNear = 10; // Fog near parameter
-    const fogFar = 4000; // Fog far parameter
+    const fogFar = 5000; // Fog far parameter
 
     scene.fog = new THREE.Fog(sceneColor, fogNear, fogFar); // Add fog to the scene
 
@@ -92,8 +94,8 @@ function main() {
     const tileLength = 3000; // Tile length
     const tileSegments = 1000; // Tile segments
 
-    let movementSpeed = 1; // Terain movement speed
-    let maxDistanceFactor = 1; // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
+    let movementSpeed = 1; // Terrain movement speed
+    let maxDistanceFactor = 2; // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
     // Texture parameters
     const terrainColor = 0x211915; // Terrain base color
@@ -182,9 +184,17 @@ function main() {
 
 
     /************************** INITIALIZATION  FUNCTIONS **************************/
+    function sleep(milliseconds) {
+        var start = new Date().getTime();
+        for (var i = 0; i < 1e7; i++) {
+          if ((new Date().getTime() - start) > milliseconds){
+            break;
+          }
+        }
+      }
 
     // Terrain initialization
-    function init(){
+    function init() {
         let terrain = []; // Terrain matrix
 
         for(let k = 0; k < totalTiles; k++) {
@@ -195,7 +205,9 @@ function main() {
             for (let j = 0; j < matrixDimensions; j++) {
                 terrain[i][j] = addTile(i, j); // Create tile in the specified (i, j) position
 
-            scene.add(terrain[i][j]); // Add the new tile to the scene
+                terrain[i][j].material.opacity = 1; // Restore full opacity to the initial terrain matrix
+
+                scene.add(terrain[i][j]); // Add the new tile to the scene
             }
         }
 
@@ -244,6 +256,9 @@ function main() {
 
         tile.geometry.attributes.position.needsUpdate = true; // Update tile vertices
         tile.geometry.computeVertexNormals(); // Update tile vertex normals
+
+        tile.material.transparent = true;
+        tile.material.opacity = 0;
 
         return tile;
     }
@@ -326,7 +341,7 @@ function main() {
         autoMove('down');
 
         // Check central tile position and update terrain matrix accordingly (along x axis)
-        if ((terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor > tileLength * maxDistanceFactor) || (terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor < -tileLength * maxDistanceFactor)){
+        if ((terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor > tileLength) || (terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor < -tileLength)) {
 
             for (let j = 0; j < matrixDimensions; j++) {
                 let i = (centralTileI - (2 * xDir) + matrixDimensions) % matrixDimensions;
@@ -349,6 +364,8 @@ function main() {
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
 
+                terrain[i][j].material.opacity = 0; // New tile is transpèarent to allow a fade-in entrance
+
                 scene.add(terrain[i][j]); // Add new tile
             }
             
@@ -360,7 +377,7 @@ function main() {
         }
 
         // Check central tile position and update terrain matrix accordingly (along z axis)
-        else if ((terrain[centralTileI][centralTileJ].position.z * maxDistanceFactor > tileLength * maxDistanceFactor) || (terrain[centralTileI][centralTileJ].position.z * maxDistanceFactor < -tileLength * maxDistanceFactor)){
+        else if ((terrain[centralTileI][centralTileJ].position.z * maxDistanceFactor > tileLength) || (terrain[centralTileI][centralTileJ].position.z * maxDistanceFactor < -tileLength)) {
 
             for (let i = 0; i < matrixDimensions; i++) {
                 let j = (centralTileJ - (2 * zDir) + matrixDimensions) % matrixDimensions;
@@ -383,6 +400,8 @@ function main() {
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
 
+                terrain[i][j].material.opacity = 0; // New tile is transpèarent to allow a fade-in entrance
+
                 scene.add(terrain[i][j]); // Add new tile
             }
             
@@ -391,6 +410,15 @@ function main() {
 
             // Update central tile index
             centralTileJ = (centralTileJ + (2 * zDir) + matrixDimensions) % matrixDimensions;
+        }
+
+        // Restore tile opacity
+        for (let i = 0; i < matrixDimensions; i++) {
+            for (let j = 0; j < matrixDimensions; j++) {
+                if (terrain[i][j].material.opacity < 1) {
+                    terrain[i][j].material.opacity += 0.1;
+                }
+            }
         }
     }
 
