@@ -2,8 +2,6 @@ import * as OC from "./three.js/examples/jsm/controls/OrbitControls.js"
 
 function main() {
 
-    let intersect = [];
-
     /************************** INITIALIZATION **************************/
 
     // Generic constants & variables
@@ -62,7 +60,7 @@ function main() {
 
     let camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 
-    camera.position.set(10, 5, 10); // TODO Set a suitable automatic position
+    camera.position.set(0, 15, 0); // TODO Set a suitable automatic position
     camera.updateProjectionMatrix();
 
     // Fake camera
@@ -72,10 +70,8 @@ function main() {
     // Controls
     let controls = new OC.OrbitControls(fakeCamera, renderer.domElement);
     controls.enableKeys = false; // Disable default keyboard controls (will be later overridden)
-    controls.enablePan = false;
-
-
-    controls.enableRotation = false;
+    //controls.enablePan = false;
+    //controls.enableRotation = false;
     
     //console.log(controls.enableRotation, controls.enablePan)
 
@@ -90,7 +86,10 @@ function main() {
 
     // Terrain creation
     let terrain = init();
+    let cell = initCell();
     let tileWorkersResults = [];
+
+    //console.log(cell[0][0][0])
 
 
     /************************** PROVA WORKER **************************/
@@ -164,7 +163,24 @@ function main() {
         return color;
     }
 
+
     /************************** INITIALIZATION  FUNCTIONS **************************/
+
+    function initCell() {
+        let cell = [];
+
+        for(let k = 0; k < totalTiles; k++) {
+            cell[k] = [];
+        }
+
+        for (let i = 0; i < matrixDimensions; i++) {
+            for (let j = 0; j < matrixDimensions; j++) {
+                cell[i][j] = [j, i]
+            }
+        }
+
+        return cell;
+    }
 
     // Terrain initialization
     function init(){
@@ -216,277 +232,12 @@ function main() {
     }
 
 
-
-
-
-
-
-
-    /* ALBERI */ 
-
-
-    /* alberi procedurali
-
-    // Helper function to transform the vertices and faces
-    function newTreeGeometry(tree, isTwigs) {
-        var output = new THREE.Geometry();
-    
-        tree[ isTwigs ? 'vertsTwig' : 'verts'].forEach(function(v) {
-        output.vertices.push(new THREE.Vector3(v[0], v[1], v[2]));
-        });
-    
-        var uv = isTwigs ? tree.uvsTwig : tree.UV;
-        tree[ isTwigs ? 'facesTwig' : 'faces'].forEach(function(f) {
-        output.faces.push(new THREE.Face3(f[0], f[1], f[2]));
-        output.faceVertexUvs[0].push(f.map(function(v) {
-            return new THREE.Vector2(uv[v][0], uv[v][1]);
-        }));
-        });
-    
-        output.computeFaceNormals();
-        output.computeVertexNormals(true);
-    
-        return output;
-    }
-    
-    var tree = new Tree({
-		"seed": 262,
-		"segments": 6,
-		"levels": 5,
-		"vMultiplier": 2.36,
-		"twigScale": 0.39,
-		"initalBranchLength": 0.49,
-		"lengthFalloffFactor": 0.85,
-		"lengthFalloffPower": 0.99,
-		"clumpMax": 0.454,
-		"clumpMin": 0.1,
-		"branchFactor": 2.45,
-		"dropAmount": -0.1,
-		"growAmount": 0.235,
-		"sweepAmount": 0.01,
-		"maxRadius": 0.139,
-		"climbRate": 0.371,
-		"trunkKink": 0.093,
-		"treeSteps": 5,
-		"taperRate": 0.947,
-		"radiusFalloffRate": 0.73,
-		"twistRate": 3.02,
-		"trunkLength": 2.4
-	});
-    
-    var trunkGeo = newTreeGeometry(tree);
-    var trunkMaterial = new THREE.MeshLambertMaterial( { color: 0xdddddd, wireframe: false } );
-    var trunkMesh = new THREE.Mesh(trunkGeo, trunkMaterial);
-    scene.add(trunkMesh); // Use your own scene
-    
-    var twigsGeo = newTreeGeometry(tree, true);
-    var twigsMaterial = new THREE.MeshLambertMaterial( { color: 0x005000, wireframe: false } );
-    var twigsMesh = new THREE.Mesh(twigsGeo, twigsMaterial);
-    scene.add(twigsMesh); // Use your own scene
-
-    */
-
-
-
-/*
-   function ellipsoid () {
-    var latitudeBands=30,longitudeBands=20,a=6,b=7,c=20,size=5;
-    for (var latNumber=0; latNumber <= latitudeBands; latNumber++)
-        {
-            var theta = (latNumber *      Math.PI *2/ latitudeBands);
-            var sinTheta = Math.sin(theta);
-            var cosTheta = Math.cos(theta);
-           
-             for (var longNumber=0; longNumber <= longitudeBands; longNumber++)
-             {
-                var phi = (longNumber  *2* Math.PI / longitudeBands);
-                var sinPhi = Math.sin(phi);
-                var cosPhi = Math.cos(phi);
-               
-
-                var x = a*cosPhi * cosTheta ;
-                var y = b*cosTheta*sinPhi;
-                var z = c*sinTheta;
-                ellipsoidgeometry.vertices.push(new THREE.Vector3( x*size,y*size,z*size));
-               
-            }
-       
-   
-    }
-
-    for (var latNumber = 0; latNumber < latitudeBands; latNumber++) {
-      for (var longNumber = 0; longNumber < longitudeBands; longNumber++) {
-    var first = (latNumber * (longitudeBands + 1)) + longNumber;
-    var second = first + longitudeBands + 1;
-    ellipsoidgeometry.faces.push(new THREE.Face3(first,second,first+1));
-   
-
-    ellipsoidgeometry.faces.push(new THREE.Face3(second,second+1,first+1));
-   
-      }
-    }
-}
-
-let ellipsoidgeometry =new THREE.Geometry();
-ellipsoid();
-var redmaterial =  new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } );
-let ellipsoidmesh = new THREE.Mesh(ellipsoidgeometry,redmaterial);
-scene.add(ellipsoidmesh);
-*/
-
-function getRandomNumberBetween (min, max) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
-
-function generateTrees(numberOfTrees) { // NOTE: All current parameters have been specifically set for the use of this function in this particular terrain script
-    // Tree geometry
-    let treeRadius = 1;
-    let treeWidthSegments = 30;
-    let treeHeightSegments = 30;
-
-    let treeGeometry = new THREE.SphereBufferGeometry(treeRadius, treeWidthSegments, treeHeightSegments);
-
-    // Tree shape deformation
-    let treeScaleX = 1;
-    let treeScaleY = 4.5;
-    let treeScaleZ = 1;
-
-    treeGeometry.applyMatrix4(new THREE.Matrix4().makeScale(treeScaleX, treeScaleY, treeScaleZ));
-
-    // Tree material
-    let treeColor = 0x00ff00;
-    let treeMaterial = new THREE.MeshLambertMaterial({color: treeColor});
-
-    let tree = new THREE.Mesh(treeGeometry, treeMaterial);
-
-    // Tree noise (more deformation)
-    let maxTreeDef = 0.4;
-    let treeVertices = tree.geometry.attributes.position.array;
-            
-    for (let k = 0; k < treeVertices.length; k++) {
-        treeVertices[k] = treeVertices[k] + noise.perlin3(treeVertices[k], treeVertices[k], treeVertices[k]) * maxTreeDef;
-    }
-
-    tree.geometry.attributes.position.needsUpdate = true;
-    tree.geometry.computeVertexNormals();
-
-    // Tree position
-    let treeX = getRandomNumberBetween(-tileLength*matrixDimensions/2, tileLength*matrixDimensions/2);
-    let treeZ = getRandomNumberBetween(-tileLength*matrixDimensions/2, tileLength*matrixDimensions/2);
-
-    // Raycasting
-    for (let i = 0; i < matrixDimensions; i++) {
-        for (let j = 0; j < matrixDimensions; j++) {
-
-            let rayCaster = new THREE.Raycaster();
-            let rayFrom = new THREE.Vector3();
-
-            let rayFromX = treeX;
-            let rayFromY = 5; // use a high enough number to ensure ray starts above terrain
-            let rayFromZ = treeZ;
-
-            rayFrom.set(rayFromX, rayFromY, rayFromZ);
-
-            let rayDir = new THREE.Vector3(0, -1, 0); // Ray points down
-
-            terrain[i][j].updateMatrixWorld();
-            
-            rayCaster.set(rayFrom, rayDir);
-
-            let intersectResult = rayCaster.intersectObject(terrain[i][j], true); // Check where the tree intersects the terrain mesh
-
-            if (intersectResult.length > 0) {
-                intersect = intersectResult;
-            }            
-        }
-    }
-
-    let treeY = intersect[0].point.y + treeRadius * treeScaleY;
-
-    tree.position.set(treeX, treeY, treeZ)
-
-    scene.add( tree );
-
-    
-
-}
-
-
-let numberOfTrees = 1;
-
-for (let i=0; i<numberOfTrees;i++){
-    generateTree();
-}
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-THREE.EllipsoidGeometry = function ( width, height, depth, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength ) {
-
-    THREE.SphereGeometry.call( this, width * 0.5, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-
-    this.applyMatrix( new THREE.Matrix4().makeScale( 1.0, height/width, depth/width ) );
-
-};
-
-THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     /************************** MOVEMENT FUNCTIONS **************************/
 
     // Get new tile vertices
     function getTileVertices(i, j, tileVertices) {
+
+        console.log(i, j)
         
         let xOffset = tileLength * i; // x axis offset (based on the tile's position in the matrix)
         let zOffset = tileLength * j; // z axis offset (based on the tile's position in the matrix)
@@ -554,8 +305,8 @@ THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
 
     let centralTileI = dist; // Central tile x axis position in the tile matrix (the one that must be checked in order to generate/remove other tiles)
     let centralTileJ = dist; // Central tile z axis position in the tile matrix
-    let topRow = -1; // Current topmost row index, needed for tile generation
-    let leftColumn = -1; // Current leftmost row index, needed for tile generation
+    let col = -1;
+    let row = -1;
 
     // Update function
     function update() { // TODO
@@ -575,12 +326,13 @@ THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
 
                 terrain[i][j].position.x = terrain[i][j].position.x + tileLength * matrixDimensions * -xDir; // New tile x position
                 
-                if (xDir == 1){
-                    tileVertices = getTileVertices(leftColumn, j, tileVertices); // Recalculate tile vertices
-                }
-                else if (xDir == -1){
-                    tileVertices = getTileVertices(leftColumn + matrixDimensions + 1, j, tileVertices); // Recalculate tile vertices
-                }
+                
+                cell[i][j][1] = cell[i][j][1] + matrixDimensions * -xDir;
+                console.log(cell[i][j][1], cell[i][j][0], 'cell x')
+
+                tileVertices = getTileVertices(cell[i][j][1], cell[i][j][0], tileVertices); // Recalculate tile vertices
+
+                terrain[i][j].geometry.attributes.position.array = tileVertices;
 
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
@@ -589,7 +341,7 @@ THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
             }
             
             // Update row index
-            leftColumn = leftColumn - xDir;
+            row = row - xDir;
 
             // Update central tile number
             centralTileI = (centralTileI + (2 * xDir) + matrixDimensions) % matrixDimensions;
@@ -609,12 +361,12 @@ THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
                 // Tile vertices update
                 let tileVertices = terrain[i][j].geometry.attributes.position.array;
 
-                if (zDir == 1){
-                    tileVertices = getTileVertices(i, topRow, tileVertices);
-                }
-                else if (zDir == -1){
-                    tileVertices = getTileVertices(i, topRow + matrixDimensions + 1, tileVertices);
-                }
+                cell[i][j][0] = cell[i][j][0] + matrixDimensions * -zDir;
+                console.log(cell[i][j][1], cell[i][j][0], 'cell z')
+
+                tileVertices = getTileVertices(cell[i][j][1], cell[i][j][0], tileVertices);
+
+                terrain[i][j].geometry.attributes.position.array = tileVertices;
 
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
@@ -623,7 +375,7 @@ THREE.EllipsoidGeometry.prototype = Object.create( THREE.Geometry.prototype );
             }
             
             // Update row index
-            topRow = topRow - zDir;
+            col = col - zDir;
 
             // Update central tile number
             centralTileJ = (centralTileJ + (2 * zDir) + matrixDimensions) % matrixDimensions;

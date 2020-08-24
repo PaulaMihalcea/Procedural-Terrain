@@ -102,9 +102,13 @@ function main() {
         movementSpeed: 1, // Terrain movement speed
         movementSpeedOld: 1, // Previous terrain movement speed
         automove: true,
-        movementDirection: 'up'
+        movementDirection: 'down'
     };
+
     let panSpeed = 50; // Terrain pan movement speed
+    let maxPanX = 2000;
+    let maxPanZ = 2000;
+
     let maxDistanceFactor = 2; // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
     // Texture parameters
@@ -137,26 +141,25 @@ function main() {
     let controls = new OC.OrbitControls(orbitCamera, renderer.domElement); // Create OrbitControls object
 
     controls.enableKeys = false; // Disable default keyboard controls (will be overridden)
-    //controls.enablePan = false; // Disable pan (can be done with keyboard)
+    controls.enablePan = false; // Disable pan (can be done with keyboard)
 
     controls.maxDistance = 3000; // Maximum zoom-out distance
     controls.maxPolarAngle = Math.PI / 2.3; // Maximum rotation angle (avoids getting the camera under the terrain)
 
     // GUI
-    //let guiContainer = document.getElementById('gui');
-//    let gui = new dat.GUI({load: getPresetJSON(), preset: 'Preset1' }); // TODO
     let gui = new dat.GUI();    
 
     var autoMoveFolder = gui.addFolder('AutoMove');
     autoMoveFolder.open()
 
-    autoMoveFolder.add(movePars, 'automove');
+    autoMoveFolder.add(movePars, 'automove').listen();
     autoMoveFolder.add(movePars, 'movementDirection', {'Up': 'down',
-                                            'Down': 'up',
-                                            'Left': 'right',
-                                            'Right': 'left'
-                                           });
+                                                       'Down': 'up',
+                                                       'Left': 'right',
+                                                       'Right': 'left'
+                                                      });
 
+    gui.add({resetCamera: function(){controls.reset()}}, 'resetCamera') // Reset camera button
 
     gui.add(movePars, 'movementSpeed', 1, 100);
 
@@ -170,6 +173,7 @@ function main() {
 
     // Terrain creation
     let terrain = init();
+    let cell = initCell();
 
 
     /************************** SYSTEM FUNCTIONS **************************/
@@ -181,34 +185,97 @@ function main() {
         renderer.setSize(window.innerWidth, window.innerHeight); // Renderer size
     }
 
+    function moveOrbitCamera(axis, dir) {
+        if (axis == 'x') {
+            if ( (orbitCamera.position.x += panSpeed * dir) > -maxPanX && (orbitCamera.position.x += panSpeed * dir) <= maxPanX ) {
+                orbitCamera.position.x += panSpeed * dir;
+            }
+            else {
+                orbitCamera.position.x = maxPanX * dir;
+            }
+        }
+        else if (axis == 'z') {
+            if ( (orbitCamera.position.z += panSpeed * dir) > -maxPanZ && (orbitCamera.position.z += panSpeed * dir) <= maxPanZ ) {
+                orbitCamera.position.z += panSpeed * dir;
+            }
+            else {
+                orbitCamera.position.z = maxPanZ * dir;
+            }
+        }
+    }
+
     // Key event
     function keyPressed(e){
-        e.preventDefault();
+        //e.preventDefault();
+
         switch(e.key){
-            case 'a':
-                xDir = -1;
-                controls.enabled = false;
-                orbitCamera.position.z += xDir * panSpeed;
-                orbitCamera.lookAt( controls.target );
-                //console.log(orbitCamera.position)
-                controls.enabled = true;
+            case 'q':
+                movePars.automove = !movePars.automove;
                 break;
-            case 'd':
-                xDir = 1;
-                controls.enabled = false;
-                orbitCamera.position.z += xDir * panSpeed;
-                orbitCamera.lookAt( controls.target );
-                //console.log(orbitCamera.position)
-                controls.enabled = true;
+            case ' ':
+                controls.reset();
                 break;
-            case 'w':
-                zDir = -1;
-                increasePosition('z', zDir * panSpeed);
-                break;
-            case 's':
-                zDir = 1;
-                increasePosition('z', zDir * panSpeed);
-                break;
+        }
+
+        if (movePars.automove) {
+            switch(e.key){
+                case 'a':
+                    moveOrbitCamera('x', -1);
+                    break;
+                case 'd':
+                    moveOrbitCamera('x', 1);
+                    break;
+                case 'w':
+                    moveOrbitCamera('z', -1);
+                    break;
+                case 's':
+                    moveOrbitCamera('z', 1);
+                    break;
+                case 'ArrowLeft':
+                    movePars.movementDirection = 'right';
+                    break;
+                case 'ArrowRight':
+                    movePars.movementDirection = 'left';
+                    break;
+                case 'ArrowUp':
+                    movePars.movementDirection = 'down';
+                    break;
+                case 'ArrowDown':
+                    movePars.movementDirection = 'up';
+                    break;
+            }
+        }
+        else {
+            switch(e.key){
+                case 'a':
+                    moveOrbitCamera('x', -1);
+                    break;
+                case 'd':
+                    moveOrbitCamera('x', 1);
+                    break;
+                case 'w':
+                    moveOrbitCamera('z', -1);
+                    break;
+                case 's':
+                    moveOrbitCamera('z', 1);
+                    break;
+                case 'ArrowLeft':
+                    xDir = -1;
+                    increasePosition('x', xDir * movePars.movementSpeed);
+                    break;
+                case 'ArrowRight':
+                    xDir = +1;
+                    increasePosition('x', xDir * movePars.movementSpeed);
+                    break;
+                case 'ArrowUp':
+                    zDir = -1;
+                    increasePosition('z', zDir * movePars.movementSpeed);
+                    break;
+                case 'ArrowDown':
+                    zDir = 1;
+                    increasePosition('z', zDir * movePars.movementSpeed);
+                    break;
+            }
         }
     }
 
@@ -245,6 +312,23 @@ function main() {
         }
 
         return terrain; // Return the terrain matrix (made of tiles)
+    }
+
+    // Init cell // TODO
+    function initCell() {
+        let cell = [];
+
+        for(let k = 0; k < totalTiles; k++) {
+            cell[k] = [];
+        }
+
+        for (let i = 0; i < matrixDimensions; i++) {
+            for (let j = 0; j < matrixDimensions; j++) {
+                cell[i][j] = [j, i]
+            }
+        }
+
+        return cell;
     }
 
     // Add tile
@@ -339,14 +423,14 @@ function main() {
         if (axis == 'x') {
             for (let i = 0; i < matrixDimensions; i++) {
                 for (let j = 0; j < matrixDimensions; j++) {
-                    terrain[i][j].position.x += + (movePars.movementSpeed * dir);
+                    terrain[i][j].position.x += movePars.movementSpeed * dir;
                 }
             }
         }
         else if (axis == 'z') {
             for (let i = 0; i < matrixDimensions; i++) {
                 for (let j = 0; j < matrixDimensions; j++) {
-                    terrain[i][j].position.z += (movePars.movementSpeed * dir);
+                    terrain[i][j].position.z += movePars.movementSpeed * dir;
                 }
             }
         }
@@ -380,36 +464,50 @@ function main() {
     let topRow = -1; // Current topmost row index, needed for tile generation
     let leftColumn = -1; // Current leftmost row index, needed for tile generation
 
-    let checkPars = 0;
+    let loopsCounter = 0; // Counter for waiting a suitable number of updates before actually reinitializing the scene
 
     // Update function
     function update () {
 
+        // Automove
         if (movePars.automove) {
             autoMove(movePars.movementDirection);
         }
 
-        if (checkPars != 0) {
-            checkPars += 1;
+        // Increase counter and refresh parameters (might have changed in the meantime)
+        if (loopsCounter != 0) {
+            loopsCounter += 1;
 
             terrainPars.maxHeightOld = terrainPars.maxHeight;
             terrainPars.smoothnessOld = terrainPars.smoothness;
         }
 
-        if (checkPars == 200){
-            refreshScene();
-            checkPars = 0;
+        // Wait x loops before reinitializing scene (otherwise the scene is updated too often and crashes); 200 is a good number
+        if (loopsCounter == 200){
+
+            refreshScene(); // Refresh scene if enough loops have passed
+
+            loopsCounter = 0; // Reset counter
         }
 
+        // Check if parameters have been changed (from the GUI)
         if (terrainPars.maxHeightOld != terrainPars.maxHeight || terrainPars.smoothnessOld != terrainPars.smoothness) {
-            checkPars = 1;
+            loopsCounter = 1; // Start increasing loops counter
         }
+
+        console.log(centralTileI, centralTileJ)
 
         // Check central tile position and update terrain matrix accordingly (along x axis)
         if ((terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor > tileLength) || (terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor < -tileLength)) {
 
             for (let j = 0; j < matrixDimensions; j++) {
                 let i = (centralTileI - (2 * xDir) + matrixDimensions) % matrixDimensions;
+
+                while (terrain[i][j].material.opacity > 0){
+                    terrain[i][j].material.opacity -= 0.1;
+                }
+
+                terrain[i][j].material.opacity = 0; // New tile is transparent in order to allow a fade-in entrance
 
                 scene.remove(terrain[i][j]); // Remove obsolete tile
 
@@ -419,12 +517,9 @@ function main() {
                 // Tile vertices update
                 let tileVertices = terrain[i][j].geometry.attributes.position.array; // Tile vertices array
 
-                if (xDir == 1){
-                    tileVertices = getTileVertices(leftColumn, j, tileVertices);
-                }
-                else if (xDir == -1){
-                    tileVertices = getTileVertices(leftColumn + matrixDimensions + 1, j, tileVertices);
-                }
+                cell[i][j][1] = cell[i][j][1] + matrixDimensions * -xDir;
+
+                tileVertices = getTileVertices(cell[i][j][1], cell[i][j][0], tileVertices);
 
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
@@ -447,6 +542,12 @@ function main() {
             for (let i = 0; i < matrixDimensions; i++) {
                 let j = (centralTileJ - (2 * zDir) + matrixDimensions) % matrixDimensions;
 
+                while (terrain[i][j].material.opacity > 0){
+                    terrain[i][j].material.opacity -= 0.1;
+                }
+
+                terrain[i][j].material.opacity = 0; // New tile is transparent in order to allow a fade-in entrance
+
                 scene.remove(terrain[i][j]); // Remove obsolete tile
 
                 // Tile position update
@@ -455,17 +556,12 @@ function main() {
                 // Tile vertices update
                 let tileVertices = terrain[i][j].geometry.attributes.position.array; // Tile vertices array
 
-                if (zDir == 1){
-                    tileVertices = getTileVertices(i, topRow, tileVertices);
-                }
-                else if (zDir == -1){
-                    tileVertices = getTileVertices(i, topRow + matrixDimensions + 1, tileVertices);
-                }
+                cell[i][j][0] = cell[i][j][0] + matrixDimensions * -zDir;
+
+                tileVertices = getTileVertices(cell[i][j][1], cell[i][j][0], tileVertices);
 
                 terrain[i][j].geometry.attributes.position.needsUpdate = true; // Update tile vertices
                 terrain[i][j].geometry.computeVertexNormals(); // Update tile vertex normals
-
-                terrain[i][j].material.opacity = 0; // New tile is transpèarent to allow a fade-in entrance
 
                 scene.add(terrain[i][j]); // Add new tile
             }
