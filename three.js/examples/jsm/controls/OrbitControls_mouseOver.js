@@ -273,9 +273,7 @@ var OrbitControls = function ( object, domElement ) {
 	this.dispose = function () {
 
 		scope.domElement.removeEventListener( 'contextmenu', onContextMenu, false );
-		scope.domElement.removeEventListener( 'mouseenter', onMouseDown, false );
-		scope.domElement.removeEventListener( 'mouseover', onMouseDown, false );
-		scope.domElement.removeEventListener( 'mousemove', onMouseDown, false );
+		scope.domElement.removeEventListener( 'mousedown', onMouseDown, false );
 		scope.domElement.removeEventListener( 'wheel', onMouseWheel, false );
 
 		scope.domElement.removeEventListener( 'touchstart', onTouchStart, false );
@@ -413,15 +411,20 @@ var OrbitControls = function ( object, domElement ) {
 
 				// perspective
 				var position = scope.object.position;
-				offset.copy( position ).sub( scope.target );
-				var targetDistance = offset.length();
 
-				// half of the fov is center to top of screen
-				targetDistance *= Math.tan( ( scope.object.fov / 2 ) * Math.PI / 180.0 );
+				//if (position.x)
 
-				// we use only clientHeight here so aspect ratio does not distort speed
-				panLeft( 2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix );
-				panUp( 2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix );
+				console.log(position.z)
+
+					offset.copy( position ).sub( scope.target );
+					var targetDistance = offset.length();
+
+					// half of the fov is center to top of screen
+					targetDistance *= Math.tan( ( scope.object.fov / 2 ) * Math.PI / 180.0 );
+
+					// we use only clientHeight here so aspect ratio does not distort speed
+					panLeft( 2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix );
+					panUp( 2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix );
 
 			} else if ( scope.object.isOrthographicCamera ) {
 
@@ -1126,8 +1129,7 @@ var OrbitControls = function ( object, domElement ) {
 
 	scope.domElement.addEventListener( 'contextmenu', onContextMenu, false );
 
-	scope.domElement.addEventListener( 'mouseenter', onMouseDown, false );
-	scope.domElement.addEventListener( 'mouseover', onMouseDown, false );
+	scope.domElement.addEventListener( 'mousedown', onMouseDown, false );
 	scope.domElement.addEventListener( 'wheel', onMouseWheel, false );
 
 	scope.domElement.addEventListener( 'touchstart', onTouchStart, false );

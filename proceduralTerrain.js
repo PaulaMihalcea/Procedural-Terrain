@@ -15,17 +15,17 @@ function main() {
     let height = window.innerHeight // Browser windows height
 
     // Canvas
-    const canvas = document.querySelector('#canvas'); // HTML canvas element to use
+    let canvas = document.getElementById('canvas'); // HTML canvas element to use
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer(); // Renderer object
+    const renderer = new THREE.WebGLRenderer({canvas}); // Renderer object
 
     renderer.setSize(width, height); // Set renderer size to window size
 
     renderer.shadowMap.enabled = true; // Enable shadows
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Shadow antialiasing
 
-    document.getElementById('canvas').appendChild(renderer.domElement);
+    document.body.appendChild(renderer.domElement);
 
     // Stats
     let showPanel = false;
@@ -88,13 +88,23 @@ function main() {
     noise.seed(PerlinSeed); // Set noise seed
 
     // Terrain parameters
-    const maxHeight = 150; // Maximum terrain height
-    const smoothness = 250; // Terrain smoothness
+    let terrainPars = {
+        maxHeight: 160, // Maximum terrain height
+        smoothness: 250, // Terrain smoothness
+        maxHeightOld: 160,
+        smoothnessOld: 250
+    };
 
     const tileLength = 3000; // Tile length
     const tileSegments = 1000; // Tile segments
 
-    let movementSpeed = 1; // Terrain movement speed
+    let movePars = {
+        movementSpeed: 1, // Terrain movement speed
+        movementSpeedOld: 1, // Previous terrain movement speed
+        automove: true,
+        movementDirection: 'up'
+    };
+    let panSpeed = 50; // Terrain pan movement speed
     let maxDistanceFactor = 2; // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
     // Texture parameters
@@ -127,9 +137,31 @@ function main() {
     let controls = new OC.OrbitControls(orbitCamera, renderer.domElement); // Create OrbitControls object
 
     controls.enableKeys = false; // Disable default keyboard controls (will be overridden)
+    //controls.enablePan = false; // Disable pan (can be done with keyboard)
 
     controls.maxDistance = 3000; // Maximum zoom-out distance
     controls.maxPolarAngle = Math.PI / 2.3; // Maximum rotation angle (avoids getting the camera under the terrain)
+
+    // GUI
+    //let guiContainer = document.getElementById('gui');
+//    let gui = new dat.GUI({load: getPresetJSON(), preset: 'Preset1' }); // TODO
+    let gui = new dat.GUI();    
+
+    var autoMoveFolder = gui.addFolder('AutoMove');
+    autoMoveFolder.open()
+
+    autoMoveFolder.add(movePars, 'automove');
+    autoMoveFolder.add(movePars, 'movementDirection', {'Up': 'down',
+                                            'Down': 'up',
+                                            'Left': 'right',
+                                            'Right': 'left'
+                                           });
+
+
+    gui.add(movePars, 'movementSpeed', 1, 100);
+
+    gui.add(terrainPars, 'maxHeight', 0, 500, 1);
+    gui.add(terrainPars, 'smoothness', 1, 1500, 1);
 
     // Event listeners
     window.addEventListener('resize', onWindowResize, false); // Window resize listener
@@ -153,21 +185,29 @@ function main() {
     function keyPressed(e){
         e.preventDefault();
         switch(e.key){
-            case 'ArrowLeft':
+            case 'a':
                 xDir = -1;
-                increasePosition('x', xDir);
+                controls.enabled = false;
+                orbitCamera.position.z += xDir * panSpeed;
+                orbitCamera.lookAt( controls.target );
+                //console.log(orbitCamera.position)
+                controls.enabled = true;
                 break;
-            case 'ArrowRight':
+            case 'd':
                 xDir = 1;
-                increasePosition('x', xDir);
+                controls.enabled = false;
+                orbitCamera.position.z += xDir * panSpeed;
+                orbitCamera.lookAt( controls.target );
+                //console.log(orbitCamera.position)
+                controls.enabled = true;
                 break;
-            case 'ArrowUp':
+            case 'w':
                 zDir = -1;
-                increasePosition('z', zDir);
+                increasePosition('z', zDir * panSpeed);
                 break;
-            case 'ArrowDown':
+            case 's':
                 zDir = 1;
-                increasePosition('z', zDir);
+                increasePosition('z', zDir * panSpeed);
                 break;
         }
     }
@@ -184,17 +224,10 @@ function main() {
 
 
     /************************** INITIALIZATION  FUNCTIONS **************************/
-    function sleep(milliseconds) {
-        var start = new Date().getTime();
-        for (var i = 0; i < 1e7; i++) {
-          if ((new Date().getTime() - start) > milliseconds){
-            break;
-          }
-        }
-      }
 
     // Terrain initialization
     function init() {
+
         let terrain = []; // Terrain matrix
 
         for(let k = 0; k < totalTiles; k++) {
@@ -246,9 +279,9 @@ function main() {
         
         for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Perlin noise)
             tileVertices[k + 2] = noise.perlin2(
-                                    (tileVertices[k] + tile.position.x) / smoothness,
-                                    (tileVertices[k + 1] - tile.position.z) / smoothness)
-                                    * maxHeight;
+                                    (tileVertices[k] + tile.position.x) / terrainPars.smoothness,
+                                    (tileVertices[k + 1] - tile.position.z) / terrainPars.smoothness)
+                                    * terrainPars.maxHeight;
         }
 
         tile.castShadow = true; // Tiles cast shadows
@@ -261,6 +294,18 @@ function main() {
         tile.material.opacity = 0;
 
         return tile;
+    }
+
+    function refreshScene () {
+        for (let i = 0; i < matrixDimensions; i++) {
+            for (let j = 0; j < matrixDimensions; j++) {
+                scene.remove(terrain[i][j]);
+            }
+        }
+
+        terrain = init();
+        terrainPars.maxHeightOld = terrainPars.maxHeight;
+        terrainPars.smoothnessOld = terrainPars.smoothness;
     }
 
 
@@ -277,9 +322,9 @@ function main() {
         
         for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Perlin noise)
             tileVertices[k + 2] = noise.perlin2(
-                                    (tileVertices[k] + xPos) / smoothness,
-                                    (tileVertices[k + 1] - zPos) / smoothness)
-                                    * maxHeight;
+                                    (tileVertices[k] + xPos) / terrainPars.smoothness,
+                                    (tileVertices[k + 1] - zPos) / terrainPars.smoothness)
+                                    * terrainPars.maxHeight;
         }
 
         return tileVertices;
@@ -290,26 +335,26 @@ function main() {
     let zDir = 0; // Along z axis
 
      // Increase tile position
-    function increasePosition(axis, dir){
+    function increasePosition (axis, dir){
         if (axis == 'x') {
             for (let i = 0; i < matrixDimensions; i++) {
                 for (let j = 0; j < matrixDimensions; j++) {
-                    terrain[i][j].position.x += + (movementSpeed * dir);
+                    terrain[i][j].position.x += + (movePars.movementSpeed * dir);
                 }
             }
         }
         else if (axis == 'z') {
             for (let i = 0; i < matrixDimensions; i++) {
                 for (let j = 0; j < matrixDimensions; j++) {
-                    terrain[i][j].position.z += (movementSpeed * dir);
+                    terrain[i][j].position.z += (movePars.movementSpeed * dir);
                 }
             }
         }
     }
 
     // Automatic movement
-    function autoMove(direction){
-        switch(direction){
+    function autoMove (direction){
+        switch (direction){
             case 'right':
                 xDir = 1;
                 increasePosition('x', xDir);
@@ -335,10 +380,30 @@ function main() {
     let topRow = -1; // Current topmost row index, needed for tile generation
     let leftColumn = -1; // Current leftmost row index, needed for tile generation
 
-    // Update function
-    function update() {
+    let checkPars = 0;
 
-        autoMove('down');
+    // Update function
+    function update () {
+
+        if (movePars.automove) {
+            autoMove(movePars.movementDirection);
+        }
+
+        if (checkPars != 0) {
+            checkPars += 1;
+
+            terrainPars.maxHeightOld = terrainPars.maxHeight;
+            terrainPars.smoothnessOld = terrainPars.smoothness;
+        }
+
+        if (checkPars == 200){
+            refreshScene();
+            checkPars = 0;
+        }
+
+        if (terrainPars.maxHeightOld != terrainPars.maxHeight || terrainPars.smoothnessOld != terrainPars.smoothness) {
+            checkPars = 1;
+        }
 
         // Check central tile position and update terrain matrix accordingly (along x axis)
         if ((terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor > tileLength) || (terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor < -tileLength)) {
@@ -421,6 +486,78 @@ function main() {
             }
         }
     }
+
+
+
+
+
+
+/* GUI PRESET*/
+function getPresetJSON() {
+	return {
+    "preset": "Default",
+    "closed": false,
+    "remembered": {
+      "Default": {
+        "0": {
+          "type1_boolean": false,
+          "type2_string": "string",
+          "type3_number": 0
+        },
+        "1": {
+          "string1": "string1",
+          "string2": "string2"
+        }
+      },
+      "Preset1": {
+        "0": {
+          "type1_boolean": true,
+          "type2_string": "string123",
+          "type3_number": -2.2938689217758985
+        },
+        "1": {
+          "string1": "string_2",
+          "string2": "string_3"
+        }
+      }
+    },
+    "folders": {
+      "FolderNameA": {
+        "preset": "Default",
+        "closed": false,
+        "folders": {}
+      },
+      "FolderNameB": {
+        "preset": "Default",
+        "closed": false,
+        "folders": {}
+      },
+      "FolderNameC": {
+        "preset": "Default",
+        "closed": false,
+        "folders": {}
+      }
+    }
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     /************************** RENDERING FUNCTIONS **************************/
