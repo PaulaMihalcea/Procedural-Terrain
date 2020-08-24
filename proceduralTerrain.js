@@ -461,8 +461,6 @@ function main() {
     // Update parameters
     let centralTileI = matrixDist; // Central tile x axis position in the tile matrix (the one that must be checked in order to generate/remove other tiles)
     let centralTileJ = matrixDist; // Central tile z axis position in the tile matrix
-    let topRow = -1; // Current topmost row index, needed for tile generation
-    let leftColumn = -1; // Current leftmost row index, needed for tile generation
 
     let loopsCounter = 0; // Counter for waiting a suitable number of updates before actually reinitializing the scene
 
@@ -528,9 +526,6 @@ function main() {
 
                 scene.add(terrain[i][j]); // Add new tile
             }
-            
-            // Update column index
-            leftColumn = leftColumn - xDir;
 
             // Update central tile index
             centralTileI = (centralTileI + (2 * xDir) + matrixDimensions) % matrixDimensions;
@@ -565,9 +560,6 @@ function main() {
 
                 scene.add(terrain[i][j]); // Add new tile
             }
-            
-            // Update row index
-            topRow = topRow - zDir;
 
             // Update central tile index
             centralTileJ = (centralTileJ + (2 * zDir) + matrixDimensions) % matrixDimensions;
