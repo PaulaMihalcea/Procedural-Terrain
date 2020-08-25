@@ -1,123 +1,171 @@
 import * as OC from "./three.js/examples/jsm/controls/OrbitControls.js"
+import { Water } from './three.js/examples/jsm/objects/Water.js';
+import { AmbientLight } from "./three.js/src/Three.js";
 
 function main() {
 
-    /************************** INITIALIZATION **************************/
-
-    let opacity = 0;
+    /************************** SCENE INITIALIZATION **************************/
 
     // Generic constants & variables
     const matrixDimensions = 3; // Number of rows/columns of the terrain square matrix; must be 3 for the current parameters (larger dimensions are very slow)
     const totalTiles = Math.pow(matrixDimensions, 2); // Total number of tiles
-    const matrixDist = Math.floor(matrixDimensions / 2);
+    const matrixDist = Math.floor(matrixDimensions / 2); // Distance of the central tile from a side
 
     let width = window.innerWidth // Browser window width
     let height = window.innerHeight // Browser windows height
 
+
     // Canvas
     let canvas = document.getElementById('canvas'); // HTML canvas element to use
 
+
     // Renderer
     const renderer = new THREE.WebGLRenderer({canvas}); // Renderer object
-
     renderer.setSize(width, height); // Set renderer size to window size
-
     renderer.shadowMap.enabled = true; // Enable shadows
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Shadow antialiasing
 
     document.body.appendChild(renderer.domElement);
 
-    // Stats
-    let showPanel = false;
 
-    let stats = new Stats(); // Statistics panel
+    // Statistics panel
+    let stats = new Stats();
+    let statsPars = {
+        showPanel: true
+    }
 
-    if (showPanel == true) {
-        stats.showPanel(0);
-        document.body.appendChild(stats.dom);
-    }
-    else {
-        stats.showPanel();
-    }
+    document.body.appendChild(stats.domElement);
+
 
     // Scene
     const scene = new THREE.Scene();
 
-    const sceneColorDay = 0xffffff; // Day background color
-    const sceneColorNight = 0x06060f; // Night background color
-
-    // Ambient light (day)
-    const ambientLightColorDay = 0xffffff; // Ambient light color
-    const ambientLightIntensityDay = 1; // Ambient light intensity
-
-    let ambientLightDay = new THREE.DirectionalLight(ambientLightColorDay, ambientLightIntensityDay); // Create ambient light
-
-    let ambientLightDayX = 0;
-    let ambientLightDayY = 60;
-    let ambientLightDayZ = 200;
-
-    ambientLightDay.position.set(ambientLightDayX, ambientLightDayY, ambientLightDayZ); // Set ambient light position
-
-    ambientLightDay.castShadow = true; // Ambient light casts shadows
-
-    // Ambient light (night)
-    const ambientLightColorNight = 0x89a7f8; // Ambient light color
-    const ambientLightIntensityNight = 0.3; // Ambient light intensity
-
-    let ambientLightNight = new THREE.DirectionalLight(ambientLightColorNight, ambientLightIntensityNight); // Create ambient light
-
-    let ambientLightNightX = 0;
-    let ambientLightNightY = 60;
-    let ambientLightNightZ = 200;
-
-    ambientLightNight.position.set(ambientLightNightX, ambientLightNightY, ambientLightNightZ); // Set ambient light position
-
-    ambientLightNight.castShadow = true; // Ambient light casts shadows
-
-    // Sunlight
-    const sunLightColor = 0x827268; // Sunlight color
-    const sunLightIntensity = 1; // Sunlight intensity
-
-    let sunLight = new THREE.PointLight(sunLightColor, sunLightIntensity); // Create sunlight
-
-    let sunLightX = 50;
-    let sunLightY = 300;
-    let sunLightZ = 50;
-
-    sunLight.position.set(sunLightX, sunLightY, sunLightZ); // Set sunlight position
-
-    // Moonlight
-    const moonLightColor = 0x827268; // Moonlight color
-    const moonLightIntensity = 1; // Moonlight intensity
-
-    let moonLight = new THREE.PointLight(moonLightColor, moonLightIntensity); // Create moonlight
-
-    let moonLightX = 50;
-    let moonLightY = 300;
-    let moonLightZ = 50;
-
-    moonLight.position.set(moonLightX, moonLightY, moonLightZ); // Set moonlight position
+    let scenePars = {
+        timeOfDay: 'foggyDay',
+    }
 
     // Fog
     const fogNear = 10; // Fog near parameter
-    const fogFar = 5000; // Fog far parameter
+    const fogFar = 2000; // Fog far parameter
 
-    let fogDay = new THREE.Fog(sceneColorDay, fogNear, fogFar); // Add fog to the scene
-    let fogNight = new THREE.Fog(sceneColorNight, fogNear, fogFar); // Add fog to the scene
 
-    // Scene parameters
-    let scenePars = {
-        timeOfDay: false
-    }
+    // Camera
+    const fov = 45; // Field of view
+    const aspect = width / height; // Aspect ratio
+    const near = 1; // Near plane
+    const far = 10000; // Far plane
+
+    let cameraX = 0;
+    let cameraY = 160;
+    let cameraZ = 800;
+
+    let camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+    camera.position.set(cameraX, cameraY, cameraZ); // Set camera position
+    camera.lookAt(cameraX, cameraY, cameraZ); // Set camera look at
+    camera.updateProjectionMatrix(); // Update camera
+
+
+    // Orbit camera (needed for OrbitControls)
+    let orbitCamera = camera.clone();
+    camera.copy(orbitCamera);
+
+
+    // Controls
+    let controls = new OC.OrbitControls(orbitCamera, renderer.domElement); // Create OrbitControls object
+
+    controls.minDistance = 100;
+    controls.maxDistance = 3000; // Maximum zoom-out distance
+    controls.maxPolarAngle = Math.PI / 2.3; // Maximum rotation angle (avoids getting the camera under the terrain)
+
+    controls.enableKeys = false; // Disable default keyboard controls (will be overridden)
+    //controls.enablePan = false; // Disable pan (can be done with keyboard; enable for debug purposes) // TODO
+
+    // Panning parameters (to avoid getting too close to the edge)
+    let panSpeed = 10; // Terrain pan movement speed
+    let maxPanX = 1000; // Maximum x axis pan
+    let maxPanZ = 1000; // Maximum z axis pan
+
+
+    // Movement parameters
+    let movePars = {
+        movementSpeed: 1, // Terrain movement speed
+        movementSpeedOld: 1, // Previous terrain movement speed
+        automove: true,
+        movementDirection: 'down'
+    };
+
+    
+    // Event listeners
+    window.addEventListener('resize', onWindowResize, false); // Window resize listener
+
+    document.addEventListener('keydown', keyPressed, false); // Key down listener (for keyboard controls)
+
+
+
+    /************************** AMBIENT LIGHTING & EFFECTS **************************/
+
+    // Foggy day
+
+    // Ambient light
+    const ambientLightColorFoggy = 0xffffff;
+    const ambientLightIntensityFoggy = 1;
+
+    let ambientLightFoggyX = 0;
+    let ambientLightFoggyY = 60;
+    let ambientLightFoggyZ = 200;
+
+    
+    // Sunlight
+    const sunLightFoggyColor = 0x827268;
+    const sunLightFoggyIntensity = 1;
+
+    let sunLightFoggyX = 50;
+    let sunLightFoggyY = 300;
+    let sunLightFoggyZ = 50;
+
+    
+    // Scene background color
+    const sceneColorDayFoggy = 0xffffff // Foggy day background color
+
+    
+
+    // Starless night
+
+    // Ambient light
+    const ambientLightColorStarless = 0x89a7f8; // Ambient light color
+    const ambientLightIntensityStarless = 0.3; // Ambient light intensity
+
+    let ambientLightStarless = new THREE.DirectionalLight(ambientLightColorStarless, ambientLightIntensityStarless); // Create ambient light
+
+    let ambientLightStarlessX = 0;
+    let ambientLightStarlessY = 60;
+    let ambientLightStarlessZ = 200;
+
+    
+    // Moonlight
+    const moonLightColorStarless = 0x827268; // Moonlight color
+    const moonLightIntensityStarless = 1; // Moonlight intensity
+
+    let moonLightStarlessX = 50;
+    let moonLightStarlessY = 300;
+    let moonLightStarlessZ = 50;
+
+    // Scene background color
+    const sceneColorNightStarless = 0x06060f // Starless night background color
+
+    
+
+    /************************** TERRAIN & WATER SETTINGS **************************/
 
     // Noise parameters
     let noisePars = {
         perlinSeed: Math.floor(Math.random() * 65536) + 1, // Perlin noise seed (from 1 to 65536)
         perlinSeedOld: 0
     }
-    noisePars.perlinSeedOld = noisePars.perlinSeed;
 
+    noisePars.perlinSeedOld = noisePars.perlinSeed;
     noise.seed(noisePars.perlinSeed); // Set noise seed
+
 
     // Terrain parameters
     let terrainPars = {
@@ -131,91 +179,105 @@ function main() {
     const tileSegments = 1000; // Tile segments
     let maxDistanceFactor = 2; // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
-    // Movement parameters
-    let movePars = {
-        movementSpeed: 1, // Terrain movement speed
-        movementSpeedOld: 1, // Previous terrain movement speed
-        automove: true,
-        movementDirection: 'down'
-    };
-
-    // Pan parameters (avoid getting too close to the edge)
-    let panSpeed = 50; // Terrain pan movement speed
-    let maxPanX = 2000; // Maximum x axis pan
-    let maxPanZ = 2000; // Maximum z axis pan
-
-    // Texture parameters
-    const terrainColor = 0x211915; // Terrain base color
-    const tileTextureFilename = 'tileTexture.jpg'; // Texture filename
+    // Terrain material parameters
+    const terrainColor = 0x211915;
+    const tileTextureFilename = 'textures/tileTexture.jpg';
     const tileTextureRepeat = 8; // How many times should the texture repeat
 
-    // Camera
-    const fov = 45; // Field of view
-    const aspect = width / height; // Aspect ratio
-    const near = 1; // Near plane
-    const far = 10000; // Far plane
 
-    let camera = new THREE.PerspectiveCamera(fov, aspect, near, far); // Create camera
+    // Water parameters
+    let waterPars = {
+        waterY: -50
+    }
 
-    let cameraX = 0;
-    let cameraY = 160;
-    let cameraZ = 800;
+    // Water material parameters
+    const waterColor = 0x001e0f;
+    const waterAlpha = 1.0;
+    const waterDistortionScale = 3.7;
 
-    camera.position.set(cameraX, cameraY, cameraZ); // Set camera position
-    camera.lookAt(cameraX, cameraY, cameraZ); // Set camera lookAt
 
-    camera.updateProjectionMatrix(); // Update camera
 
-    // Orbit camera (needed for OrbitControls)
-    let orbitCamera = camera.clone();
-    camera.copy(orbitCamera);
+    /************************** GUI **************************/
 
-    // Controls
-    let controls = new OC.OrbitControls(orbitCamera, renderer.domElement); // Create OrbitControls object
+    // TODO
+    let gui = new dat.GUI();
 
-    controls.enableKeys = false; // Disable default keyboard controls (will be overridden)
-    controls.enablePan = false; // Disable pan (can be done with keyboard)
-
-    controls.maxDistance = 3000; // Maximum zoom-out distance
-    controls.maxPolarAngle = Math.PI / 2.3; // Maximum rotation angle (avoids getting the camera under the terrain)
-
-    // GUI
-    let gui = new dat.GUI();    
+    var guiW = gui.add(waterPars, 'waterY', -terrainPars.maxHeight, terrainPars.maxHeight).name('Water level').onChange(function(){
+        water.position.y = waterPars.waterY;
+    })
 
     var autoMoveFolder = gui.addFolder('AutoMove');
     autoMoveFolder.close()
 
-    autoMoveFolder.add(movePars, 'automove').listen();
-    autoMoveFolder.add(movePars, 'movementDirection', {'Up': 'down',
-                                                       'Down': 'up',
-                                                       'Left': 'right',
-                                                       'Right': 'left'
-                                                      }).listen();
+    autoMoveFolder.add(movePars, 'automove').name('Automove (Q)').listen();
+    autoMoveFolder.add(movePars, 'movementDirection', {
+        'Up': 'down',
+        'Down': 'up',
+        'Left': 'right',
+        'Right': 'left'
+        }).name('Movement direction').listen();
 
-    gui.add(scenePars, 'timeOfDay', {'Day': true,
-                                    'Night': false
-                                    }).listen();
-    gui.add({resetCamera: function(){controls.reset()}}, 'resetCamera') // Reset camera button
+    gui.add(scenePars, 'timeOfDay', {'Foggy day': 'foggyDay',
+                                    'Starless night': 'starlessNight'
+                                    }).name('Scene (E)').listen();
+    gui.add({resetCamera: function(){controls.reset()}}, 'resetCamera').name('Reset camera (SPACEBAR)') // Reset camera button
 
-    gui.add(movePars, 'movementSpeed', 1, 100);
+    gui.add(movePars, 'movementSpeed', 1, 100).name('Movement speed') //.onFinishChange(function(){console.log('ciao')}); // TODO
 
-    gui.add(noisePars, 'perlinSeed', 1, 65536, 1);
-    gui.add(terrainPars, 'maxHeight', 0, 500, 1);
-    gui.add(terrainPars, 'smoothness', 1, 1500, 1);
+    gui.add(noisePars, 'perlinSeed', 1, 65536, 1).name('Perlin noise seed');
+    gui.add(terrainPars, 'maxHeight', 0, 500, 1).name('Max terrain height').onChange(function(){guiW.__max = terrainPars.maxHeight});
+    gui.add(terrainPars, 'smoothness', 1, 1500, 1).name('Terrain smoothness');
 
-    // Event listeners
-    window.addEventListener('resize', onWindowResize, false); // Window resize listener
+    gui.add(statsPars, 'showPanel').name('Show stats panel').onChange(
+        function() {
+            if (statsPars.showPanel) {
+                stats.showPanel(0);
+            }
+            else if (!statsPars.showPanel)  {
+                stats.showPanel();
+            }
+        })
 
-    document.addEventListener('keydown', keyPressed, false); // Key down listener (for keyboard controls)
+
+
+    /************************** INITIALIZATION **************************/
+
+    // Lights
+    let ambientLight = new THREE.DirectionalLight();
+    let sourceLight = new THREE.PointLight();
+    
+    let fog = new THREE.Fog(); // Add fog to the scene
+    fog.near = fogNear;
+    fog.far = fogFar;
+
+    scene.add(ambientLight);
+    scene.add(sourceLight);
+    scene.fog = fog;
+
+    // Scene setting
+    setScene(scenePars.timeOfDay, ambientLight, sourceLight);
 
     // Terrain creation
-    setScene(scenePars.timeOfDay);
-
-    let terrain = init();
+    let terrain = initTerrain();
     let cell = initCell();
 
+    // Water creation
+    let water = initWater();
 
-    /************************** SYSTEM FUNCTIONS **************************/
+
+
+    /************************** MISC FUNCTIONS **************************/
+
+    // Random color generator (debug purposes only)
+    function getRandomColor() {
+        let letters = '0123456789abcdef';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
 
     // Window resize
     function onWindowResize() {
@@ -243,6 +305,10 @@ function main() {
         }
     }
 
+
+
+    /************************** CONTROLS **************************/
+
     // Key event
     function keyPressed(e){
         switch(e.key){
@@ -250,7 +316,9 @@ function main() {
                 movePars.automove = !movePars.automove;
                 break;
             case 'e':
-                scenePars.timeOfDay = !scenePars.timeOfDay;
+                if (scenePars.timeOfDay == 'starlessNight') scenePars.timeOfDay = 'foggyDay'
+                else if (scenePars.timeOfDay == 'foggyDay') scenePars.timeOfDay = 'starlessNight';
+                setScene();
                 break;
             case ' ':
                 controls.reset();
@@ -319,47 +387,58 @@ function main() {
         }
     }
 
-    // Random color generator (debug purposes only)
-    function getRandomColor() {
-        let letters = '0123456789abcdef';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-            color += letters[Math.floor(Math.random() * 16)];
-        }
-        return color;
-    }
-
 
     /************************** INITIALIZATION  FUNCTIONS **************************/
 
     // Scene initialization
-    function setScene(timeOfDay) {
-        if (!timeOfDay){
-            scene.remove(sunLight);
-            scene.remove(ambientLightDay);
+    function setScene(timeOfDay, ambientLight, sourceLight) {
+        if (timeOfDay == 'foggyDay') {
+            
+            // Ambient light
+            ambientLight.color.setHex(ambientLightColorFoggy);
+            ambientLight.intensity = ambientLightIntensityFoggy;
+            ambientLight.position.set(ambientLightFoggyX, ambientLightFoggyY, ambientLightFoggyZ);
+            ambientLight.castShadow = true; // Ambient light casts shadows
 
-            scene.background = new THREE.Color(sceneColorNight); // Set scene background color
+            // Sunlight
+            sourceLight.color.setHex(sunLightFoggyColor);
+            sourceLight.intensity = sunLightFoggyIntensity;
+            sourceLight.position.set(sunLightFoggyX, sunLightFoggyY, sunLightFoggyZ);
+            sourceLight.castShadow = false;
 
-            scene.add(moonLight); // Add moonlight to the scene
-            scene.add(ambientLightNight); // Add night ambient light to the scene
+            // Scene
+            scene.background = new THREE.Color(sceneColorDayFoggy);
 
-            scene.fog = fogNight;
+            // Fog
+            fog.color = new THREE.Color(sceneColorDayFoggy);
         }
-        else if (timeOfDay) {
-            scene.remove(moonLight); // Add moonlight to the scene
-            scene.remove(ambientLightNight); // Add night ambient light to the scene
+        else if (timeOfDay == 'starlessNight') {
+            
+            // Ambient light
+            ambientLight.color.setHex(ambientLightColorStarless);
+            ambientLight.intensity = ambientLightIntensityStarless;
+            ambientLight.position.set(ambientLightStarlessX, ambientLightStarlessY, ambientLightStarlessZ);
+            ambientLight.castShadow = true; // Ambient light casts shadows
+            ambientLight.updateMatrix();
 
-            scene.background = new THREE.Color(sceneColorDay); // Set scene background color
+            // Moonlight
+            sourceLight.color.setHex(moonLightColorStarless);
+            sourceLight.intensity = moonLightIntensityStarless;
+            sourceLight.position.set(moonLightStarlessX, moonLightStarlessY, moonLightStarlessZ);
+            sourceLight.castShadow = false;
+            sourceLight.updateMatrix();
 
-            scene.add(sunLight); // Add sunlight to the scene
-            scene.add(ambientLightDay); // Add day ambient light to the scene
+            // Scene
+            scene.background = new THREE.Color(sceneColorNightStarless);
 
-            scene.fog = fogDay;
+            // Fog
+            fog.color = new THREE.Color(sceneColorNightStarless);
         }
     }
 
+
     // Terrain initialization
-    function init() {
+    function initTerrain() {
 
         let terrain = []; // Terrain matrix
 
@@ -395,6 +474,27 @@ function main() {
         }
 
         return cell;
+    }
+
+    // Water initialization
+    function initWater() {
+        let waterGeometry = new THREE.PlaneBufferGeometry(tileLength * matrixDimensions + 1000, tileLength * matrixDimensions + 1000);
+
+        let water = new Water(waterGeometry,
+            {
+                alpha: waterAlpha,
+                waterColor: waterColor,
+                distortionScale: waterDistortionScale,
+                fog: scene.fog !== undefined
+            }
+        );
+
+        water.rotation.x = - Math.PI / 2;
+        water.position.y = waterPars.waterY;
+
+        scene.add(water);
+
+        return water;
     }
 
     // Add tile
@@ -453,7 +553,7 @@ function main() {
             }
         }
 
-        terrain = init();
+        terrain = initTerrain();
         terrainPars.maxHeightOld = terrainPars.maxHeight;
         terrainPars.smoothnessOld = terrainPars.smoothness;
     }
@@ -533,6 +633,8 @@ function main() {
     // Update function
     function update () {
 
+        setScene(scenePars.timeOfDay, ambientLight, sourceLight);
+
         // Automove
         if (movePars.automove) {
             autoMove(movePars.movementDirection);
@@ -557,8 +659,6 @@ function main() {
         if (noisePars.perlinSeedOld != noisePars.perlinSeed || terrainPars.maxHeightOld != terrainPars.maxHeight || terrainPars.smoothnessOld != terrainPars.smoothness) {
             loopsCounter = 1; // Start increasing loops counter
         }
-
-        setScene(scenePars.timeOfDay);
 
         // Check central tile position and update terrain matrix accordingly (along x axis)
         if ((terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor > tileLength) || (terrain[centralTileI][centralTileJ].position.x * maxDistanceFactor < -tileLength)) {
@@ -717,6 +817,8 @@ function getPresetJSON() {
 
     // Rendering
     function render() {
+        water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+
         requestAnimationFrame(render);
         renderer.render(scene, orbitCamera);
     }
