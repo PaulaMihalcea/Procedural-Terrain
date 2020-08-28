@@ -1,9 +1,0 @@
-{
-  "globals": {
-    "no-undef": true
-},
-  
-  "env": {
-    "browser": true
-  }
-}

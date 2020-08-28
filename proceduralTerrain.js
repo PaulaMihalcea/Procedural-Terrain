@@ -1,6 +1,7 @@
-import * as OC from "./three.js/examples/jsm/controls/OrbitControls.js";
-import {Water} from './three.js/examples/jsm/objects/Water.js';
-import {diamondSquaredMap} from './diamondSquare.js';
+import * as OC from './assets/three.js/examples/jsm/controls/OrbitControls.js';
+import {Water} from './assets/three.js/examples/jsm/objects/Water.js';
+import {diamondSquaredMap} from './assets/diamondSquare.js';
+
 
 
 /************************** PARAMETERS **************************/
@@ -16,30 +17,30 @@ let height = window.innerHeight // Browser windows height
 
 // Camera
 let cameraPars = {
-    fov: 45, // Field of view
+    fov: 100, // Field of view
     aspect: width / height, // Aspect ratio
-    near: 1, // Near plane
-    far: 10000, // Far plane
+    near: 0.1, // Near plane
+    far: 1000, // Far plane
 
     cameraX: 0,
-    cameraY: 160,
-    cameraZ: 800
+    cameraY: 8.5,
+    cameraZ: 30
 };
 
 
 // Orbit camera parameters (to avoid getting too close to the edge)
 let orbitCameraPars = {
-    panSpeed: 10, // Terrain pan movement speed
-    maxPanX: 1000, // Maximum x axis pan
-    maxPanZ: 1000 // Maximum z axis pan
+    panSpeed: 0.1, // Terrain pan movement speed
+    maxPanX: 100, // Maximum x axis pan
+    maxPanZ: 100 // Maximum z axis pan
 };
 
 
 // Controls parameters
 let controlsPars = {
-    minDistance: 100,
-    maxDistance: 3000,
-    maxPolarAngle: Math.PI / 2.3,
+    minDistance: 10,
+    maxDistance: 100,
+    maxPolarAngle: Math.PI / 2.05,
 
     enableKeys: false,
     enablePan: false
@@ -54,7 +55,7 @@ let statsPars = {
 
 // Scene
 let scenePars = {
-    timeOfDay: 'starlessNight'
+    timeOfDay: 'foggyDay'
 };
 
 
@@ -63,12 +64,10 @@ let movePars = {
     xDir: 0, // Movement direction along x axis
     zDir: 0, // Movement direction along z axis
 
-    movementSpeed: 1, // Terrain movement speed
+    movementSpeed: 0.05, // Terrain movement speed
     
     automove: true,
     movementDirection: 'down', // Automove direction
-
-    movementSpeedOld: 1
 };
 
 
@@ -97,57 +96,64 @@ let noisePars = {
 
 // Terrain parameters
 let terrainPars = {
-    tileLength: 3000, // Current tile length
-    tileSegments: 1000, // Current tile segments
-
-    tileLengthPS: 3000, // Default tile length (Perlin & Simplex)
-    tileSegmentsPS: 1000, // Default tile segments (Perlin & Simplex)
-    tileLengthDiamond: 10, // Default tile length (Diamond-Square)
-    tileSegmentsDiamond: 10, // Default tile segments (Diamond-Square)
-
-    tileLengthNew: 10,
-    tileSegmentsNew: 10,
+    tileLength: 500, // Current tile length
+    tileSegments: 500, // Current tile segments
 
     maxDistanceFactor: 2, // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
-    maxHeight: 160, // Default maximum terrain height
+    maxHeight: 5, // Default maximum terrain height
 
-    maxHeightPS: 160, // Maximum terrain height (Perlin & Simplex)
-    maxHeightDiamond: 5, // Maximum terrain height (Diamond-Square)
+    maxHeightNew: 5,
 
-    smoothness: 250, // Terrain smoothness
+    smoothnessPS: 7, // Terrain smoothness
 
-    tileTextureFilename: 'textures/tileTexture.jpg',
-    tileTextureRepeat: 8, // How many times should the texture repeat
+    smoothnessPSNew: 7,
 
-    maxHeightNew: 160,
-    smoothnessNew: 250,
+    tileTextureFilename: 'img/textures/terrainTexture.jpg',
+    tileTextureRepeat: 30, // How many times should the texture repeat
 
     regenerateTerrain: 
-        function regenerateTerrain() {
-            noisePars.noiseType = noisePars.noiseTypeNew;
-            noisePars.seed = noisePars.seedNew;
+        function regenerateTerrain () {
 
-            terrainPars.tileLength = terrainPars.tileLengthNew;
-            terrainPars.tileSegments = terrainPars.tileSegmentsNew;
+            setTimeout(function() {
+                movePars.automove = false;
 
-            terrainPars.maxHeight = terrainPars.maxHeightNew;
-            terrainPars.smoothness = terrainPars.smoothnessNew;
+                noisePars.noiseType = noisePars.noiseTypeNew;
+                noisePars.seed = noisePars.seedNew;
 
-            guiWaterLevel.__min = - terrainPars.maxHeight + terrainPars.maxHeight / 2;
-            guiWaterLevel.__max = terrainPars.maxHeight - terrainPars.maxHeight / 2;
-        
-            for (let i = 0; i < matrixDimensions; i++) {
-                for (let j = 0; j < matrixDimensions; j++) {
-                    scene.remove(terrain[i][j]);
+                terrainPars.maxHeight = terrainPars.maxHeightNew;
+                terrainPars.smoothnessPS = terrainPars.smoothnessPSNew;
+
+                guiWaterLevel.__min = - terrainPars.maxHeight + terrainPars.maxHeightNew / 2;
+                guiWaterLevel.__max = terrainPars.maxHeight - terrainPars.maxHeightNew / 2;
+            
+                for (let i = 0; i < matrixDimensions; i++) {
+                    for (let j = 0; j < matrixDimensions; j++) {
+                        scene.remove(terrain[i][j]);
+                    }
                 }
-            }
-        
-            init = initTerrain();
-            terrain = init[0];
-            cell = init[1];
+            
+                init = initTerrain();
+                terrain = init[0];
+                cell = init[1];
+
+                initCamera(orbitCamera);
+                movePars.automove = true;
+
+                removeLoadingOverlay();
+            }, 100);
+
+                addLoadingOverlay();
         }
 };
+
+function addLoadingOverlay () {
+    document.getElementById('loadingOverlay').style.display = 'table';    
+}
+
+function removeLoadingOverlay () {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
 
 
 // Water parameters
@@ -156,8 +162,12 @@ let waterPars = {
     alpha: 1.0,
     distortionScale: 3.7,
 
+    waterTextureFilename: 'img/textures/waternormals.jpg',
+    textureWidth: 512,
+    textureHeight: 512,
+
     showWater: true,
-    waterY: -50
+    waterY: -1
 };
 
 
@@ -166,8 +176,8 @@ let waterPars = {
 
 // Fog
 let fogPars = {
-    fogNear: 10, // Fog near parameter
-    fogFar: 2000 // Fog far parameter
+    fogNear: 0.1, // Fog near parameter
+    fogFar: 100 // Fog far parameter
 };
 
 
@@ -191,8 +201,8 @@ let foggyDayPars = {
 };
 
 
-// Starless night
-let starlessNightPars = {
+// Starry night
+let starryNightPars = {
     ambientLightColor: 0x89a7f8,
     ambientLightIntensity: 0.3,
 
@@ -200,14 +210,28 @@ let starlessNightPars = {
     ambientLightY: 60,
     ambientLightZ: 200,
 
-    sourceLightColor: 0x827268,
-    sourceLightIntensity: 1,
+    sourceLightColor: 0x826a48,//0x827268,
+    sourceLightIntensity: 0.5,
 
-    sourceLightX: 50,
-    sourceLightY: 300,
-    sourceLightZ: 50,
+    sourceLightX: 0,
+    sourceLightY: 100,
+    sourceLightZ: 25,
 
-    sceneColor: 0x06060f
+    sceneColor: 0x96aecc,
+    sceneBackground:
+        function starryNightTexture () {
+            let loader = new THREE.CubeTextureLoader();
+            let starryNightTexture = loader.load([
+                'img/textures/starryNightTexturePX.png',
+                'img/textures/starryNightTextureNX.png',
+                'img/textures/starryNightTexturePY.png',
+                'img/textures/starryNightTextureNY.png',
+                'img/textures/starryNightTexturePZ.png',
+                'img/textures/starryNightTextureNZ.png'
+            ]);
+            
+            return starryNightTexture;
+        }
 };
 
 
@@ -220,19 +244,19 @@ let gui = new dat.GUI({width: 450});
 // Scene
 let sceneFolder = gui.addFolder('Scene');
 
-sceneFolder.add(scenePars, 'timeOfDay', {'Foggy day': 'foggyDay',
-                                'Starless night': 'starlessNight'
-                                }).name('Scene (E)').listen();
-sceneFolder.add(statsPars, 'showPanel').name('Show stats panel').onChange(
+sceneFolder.add(scenePars, 'timeOfDay', {
+    'Foggy day': 'foggyDay',
+    'Starry night': 'starryNight'
+    }).name('Scene (E)').onChange(
+        function () {
+            setScene();
+        }
+    ).listen();
+sceneFolder.add(statsPars, 'showPanel').name('Show stats panel (Z)').onChange(
     function() {
-        if (statsPars.showPanel) {
-            document.body.appendChild(stats.domElement);
-        }
-        else if (!statsPars.showPanel)  {
-            document.body.removeChild(stats.domElement);
-        }
+        statsPanelToggle();
     }
-);
+).listen();
 
 sceneFolder.open();
 
@@ -248,7 +272,7 @@ moveFolder.add(movePars, 'movementDirection', {
     'Right': 'left'
     }).name('Automove direction (ARROWS)').listen();
 
-moveFolder.add(movePars, 'movementSpeed', 1, 100).name('Movement speed');
+moveFolder.add(movePars, 'movementSpeed', 0.001, 0.3, 0.001).name('Movement speed');
 
 moveFolder.open();
 
@@ -267,32 +291,28 @@ terrainFolder.add(noisePars, 'noiseTypeNew', {
                 guiTerrainSmoothness.__li.setAttribute('style', 'display: none');
 
                 guiIterations.__li.setAttribute('style', null);
-                guiTerrainMaxHeight.__max = terrainPars.maxHeightDiamond;
 
-                terrainPars.tileLengthNew = terrainPars.tileLengthDiamond;
-                terrainPars.tileSegmentsNew = terrainPars.tileSegmentsDiamond;
+                terrainPars.maxHeightNew = terrainPars.maxHeight;
             }
             else if ((noisePars.noiseTypeNew == 'perlin' && noisePars.noiseTypeGUI == 'diamondSquare') || (noisePars.noiseTypeNew == 'simplex' && noisePars.noiseTypeGUI == 'diamondSquare')) {
                 guiIterations.__li.setAttribute('style', 'display: none');
 
                 guiNoiseSeed.__li.setAttribute('style', null);
                 guiTerrainSmoothness.__li.setAttribute('style', null);
-                guiTerrainMaxHeight.__max = terrainPars.maxHeightPS;
 
-                terrainPars.tileLengthNew = terrainPars.tileLengthPS;
-                terrainPars.tileSegmentsNew = terrainPars.tileSegmentsPS;
+                terrainPars.maxHeightNew = terrainPars.maxHeight;
             }
             noisePars.noiseTypeGUI = noisePars.noiseTypeNew;
         }
     ).listen();
 
-let guiNoiseSeed = terrainFolder.add(noisePars, 'seedNew', 1, 65536, 1).name('Noise seed');
-let guiTerrainSmoothness = terrainFolder.add(terrainPars, 'smoothnessNew', 1, 1500, 1).name('Terrain smoothness');
-let guiTerrainMaxHeight = terrainFolder.add(terrainPars, 'maxHeightNew', 0, 500, 1).name('Max terrain height');
+let guiNoiseSeed = terrainFolder.add(noisePars, 'seedNew', 1, 65536, 1).name('Noise seed').listen();
+let guiTerrainSmoothness = terrainFolder.add(terrainPars, 'smoothnessPSNew', 1.5, 15, 0.1).name('Terrain smoothness');
+let guiTerrainMaxHeight = terrainFolder.add(terrainPars, 'maxHeightNew', 0, 10, 0.1).name('Max terrain height').listen();
 let guiIterations = terrainFolder.add(noisePars, 'diamondIterations', 0, 7, 1).name('Iterations');
 guiIterations.__li.setAttribute('style', 'display: none');
 
-terrainFolder.add(terrainPars, 'regenerateTerrain').name('<b>Regenerate terrain</b>');
+terrainFolder.add(terrainPars, 'regenerateTerrain').name('<b>Regenerate terrain (ENTER)</b>');
 
 terrainFolder.open();
 
@@ -306,7 +326,7 @@ waterFolder.add(waterPars, 'showWater').name('Show water (R)').onChange(
     }
     ).listen();
 
-let guiWaterLevel = waterFolder.add(waterPars, 'waterY', - terrainPars.maxHeight + terrainPars.maxHeight / 2, terrainPars.maxHeight - terrainPars.maxHeight / 2).name('Water level').onChange(
+let guiWaterLevel = waterFolder.add(waterPars, 'waterY', - terrainPars.maxHeight + terrainPars.maxHeight / 2, terrainPars.maxHeight - terrainPars.maxHeight / 2, 0.01).name('Water level').onChange(
     function () {
         water.position.y = waterPars.waterY;
     }
@@ -316,12 +336,11 @@ waterFolder.open();
 
 gui.add({resetCamera:
     function () {
-    controls.reset();
+        initCamera(orbitCamera);
     }
 }, 'resetCamera').name('Reset camera (SPACEBAR)').listen();
 
 gui.close();
-gui.open() // TODO
 
 
 
@@ -337,18 +356,18 @@ function initCamera (camera) {
 
 // Controls (OrbitControls)
 function initControls (controls) {
-    controls.minDistance = controlsPars.minDistance;
+    controls.minDistance = controlsPars.minDistance; // Minimum zoom-in distance
     controls.maxDistance = controlsPars.maxDistance; // Maximum zoom-out distance
     controls.maxPolarAngle = controlsPars.maxPolarAngle; // Maximum rotation angle (avoids getting the camera under the terrain)
     
     controls.enableKeys = controlsPars.enableKeys; // Disable default keyboard controls (will be overridden)
-    //controls.enablePan = controlsPars.enablePan; // Disable pan (can be done with keyboard; enable for debug purposes)
+    controls.enablePan = controlsPars.enablePan; // Disable pan (can be done with keyboard; enable for debug purposes)
 }
 
 
 // Scene setting (switches between times of day)
-function setScene (timeOfDay, ambientLight, sourceLight) {
-    if (timeOfDay == 'foggyDay') {
+function setScene () {
+    if (scenePars.timeOfDay == 'foggyDay') {
         
         // Ambient light
         ambientLight.color.setHex(foggyDayPars.ambientLightColor);
@@ -368,34 +387,33 @@ function setScene (timeOfDay, ambientLight, sourceLight) {
         // Fog
         fog.color = new THREE.Color(foggyDayPars.sceneColor);
     }
-    else if (timeOfDay == 'starlessNight') {
+    else if (scenePars.timeOfDay == 'starryNight') {
         
         // Ambient light
-        ambientLight.color.setHex(starlessNightPars.ambientLightColor);
-        ambientLight.intensity = starlessNightPars.ambientLightIntensity;
-        ambientLight.position.set(starlessNightPars.ambientLightX, starlessNightPars.ambientLightY, starlessNightPars.ambientLightZ);
+        ambientLight.color.setHex(starryNightPars.ambientLightColor);
+        ambientLight.intensity = starryNightPars.ambientLightIntensity;
+        ambientLight.position.set(starryNightPars.ambientLightX, starryNightPars.ambientLightY, starryNightPars.ambientLightZ);
         ambientLight.castShadow = true; // Ambient light casts shadows
         ambientLight.updateMatrix();
 
         // Moonlight
-        sourceLight.color.setHex(starlessNightPars.sourceLightColor);
-        sourceLight.intensity = starlessNightPars.sourceLightIntensity;
-        sourceLight.position.set(starlessNightPars.sourceLightX, starlessNightPars.sourceLightY, starlessNightPars.sourceLightZ);
+        sourceLight.color.setHex(starryNightPars.sourceLightColor);
+        sourceLight.intensity = starryNightPars.sourceLightIntensity;
+        sourceLight.position.set(starryNightPars.sourceLightX, starryNightPars.sourceLightY, starryNightPars.sourceLightZ);
         sourceLight.castShadow = false;
         sourceLight.updateMatrix();
 
         // Scene
-        scene.background = new THREE.Color(starlessNightPars.sceneColor);
+        scene.background = starryNightPars.sceneBackground();
 
         // Fog
-        fog.color = new THREE.Color(starlessNightPars.sceneColor);
+        fog.color = new THREE.Color(starryNightPars.sceneColor);
     }
 }
 
 
 // Terrain initialization
 function initTerrain () {
-
     let terrain = []; // Terrain matrix
     let cell = []; // Cell number (made of an (i, j) index); needed to create new tiles correctly
 
@@ -425,6 +443,12 @@ function initWater () {
 
     let water = new Water(waterGeometry,
         {
+            textureWidth: waterPars.textureWidth, // TODO
+            textureHeight: waterPars.textureHeight,
+            waterNormals: new THREE.TextureLoader().load(waterPars.waterTextureFilename, function (texture)
+                {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                }),
             alpha: waterPars.alpha,
             waterColor: waterPars.color,
             distortionScale: waterPars.distortionScale,
@@ -510,28 +534,38 @@ function moveOrbitCamera (axis, dir) {
 
 /************************** UPDATE FUNCTIONS **************************/
 
+// Stats panel toggle
+function statsPanelToggle () {
+    if (statsPars.showPanel) {
+        document.body.appendChild(stats.domElement);
+    }
+    else if (!statsPars.showPanel)  {
+        document.body.removeChild(stats.domElement);
+    }
+}
+
 // Get tile elevation
-function getElevation (tileVertices, xPos, zPos) {
+function getElevation (tileVertices, xPos, zPos) {    
     if (noisePars.noiseType == 'perlin') {
         for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Perlin noise)
             tileVertices[k + 2] = noise.perlin2(
-                                    (tileVertices[k] + xPos) / terrainPars.smoothness,
-                                    (tileVertices[k + 1] - zPos) / terrainPars.smoothness)
+                                    (tileVertices[k] + xPos) / terrainPars.smoothnessPS,
+                                    (tileVertices[k + 1] - zPos) / terrainPars.smoothnessPS)
                                     * terrainPars.maxHeight;
         }
     }
     else if (noisePars.noiseType == 'simplex') {
         for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Simplex noise)
             tileVertices[k + 2] = noise.simplex2(
-                                    (tileVertices[k] + xPos) / terrainPars.smoothness,
-                                    (tileVertices[k + 1] - zPos) / terrainPars.smoothness)
+                                    (tileVertices[k] + xPos) / terrainPars.smoothnessPS,
+                                    (tileVertices[k + 1] - zPos) / terrainPars.smoothnessPS)
                                     * terrainPars.maxHeight;
         }
     }
-    else if (noisePars.noiseType == 'diamondSquare') { // TODO troppo piccolo, va scalato O cambiata la camera e la nebbia (probabilmente meglio scalare)
+    else if (noisePars.noiseType == 'diamondSquare') {
         for (let k = 0; k <= tileVertices.length; k += 3) { // Elevation (Diamond-Square noise)
             if (!isNaN(tileVertices[k] + xPos) || !isNaN(tileVertices[k + 1] - zPos)){
-                tileVertices[k + 2] = diamondSquaredMap(tileVertices[k] + xPos, tileVertices[k + 1] - zPos, 1, 1, noisePars.diamondIterations)[0][0] * terrainPars.maxHeightDiamond;
+                tileVertices[k + 2] = diamondSquaredMap(tileVertices[k] + xPos, tileVertices[k + 1] - zPos, 1, 1, noisePars.diamondIterations)[0][0] * terrainPars.maxHeight;
             }
         }        
     }
@@ -546,11 +580,9 @@ function addTile (i, j) {
     let loader = new THREE.TextureLoader(); // Texture loader
     let tileTexture = loader.load(terrainPars.tileTextureFilename);
 
-    if (noisePars.noiseType != 'diamondSquare') {
-        tileTexture.wrapS = THREE.RepeatWrapping;
-        tileTexture.wrapT = THREE.RepeatWrapping;
-        tileTexture.repeat.set(terrainPars.tileTextureRepeat, terrainPars.tileTextureRepeat);
-    }
+    tileTexture.wrapS = THREE.RepeatWrapping;
+    tileTexture.wrapT = THREE.RepeatWrapping;
+    tileTexture.repeat.set(terrainPars.tileTextureRepeat, terrainPars.tileTextureRepeat);
 
     let tileMaterial = new THREE.MeshLambertMaterial({map: tileTexture}); // Create textured tile material
 
@@ -570,7 +602,6 @@ function addTile (i, j) {
 
     tile.geometry.attributes.position.array = getElevation(tile.geometry.attributes.position.array, tile.position.x, tile.position.z)
 
-    tile.castShadow = true; // Tiles cast shadows
     tile.receiveShadow = true; // Tiles receive shadows from nearby elevations
 
     tile.geometry.attributes.position.needsUpdate = true; // Update tile vertices
@@ -727,62 +758,19 @@ function onWindowResize () {
 }
 
 
-// GUI preset // TODO
-function getGUIPreset () {
-    return {
-    "preset": "Default",
-    "closed": false,
-    "remembered": {
-        "Default": {
-        "0": {
-            "type1_boolean": false,
-            "type2_string": "string",
-            "type3_number": 0
-        },
-        "1": {
-            "string1": "string1",
-            "string2": "string2"
-        }
-        },
-        "Preset1": {
-        "0": {
-            "type1_boolean": true,
-            "type2_string": "string123",
-            "type3_number": -2.2938689217758985
-        },
-        "1": {
-            "string1": "string_2",
-            "string2": "string_3"
-        }
-        }
-    },
-    "folders": {
-        "FolderNameA": {
-        "preset": "Default",
-        "closed": false,
-        "folders": {}
-        },
-        "FolderNameB": {
-        "preset": "Default",
-        "closed": false,
-        "folders": {}
-        },
-        "FolderNameC": {
-        "preset": "Default",
-        "closed": false,
-        "folders": {}
-        }
-    }
-    };
-    }    
-
-
 
 /************************** CONTROLS **************************/
 
 // Key events
 function keyPressed(e){
     switch(e.key){
+        case 'Enter':
+            terrainPars.regenerateTerrain();
+            break;
+        case 'z':
+            statsPars.showPanel = !statsPars.showPanel;
+            statsPanelToggle();
+            break;
         case 'r':
             waterPars.showWater = !waterPars.showWater;
             water.visible = waterPars.showWater;
@@ -791,12 +779,17 @@ function keyPressed(e){
             movePars.automove = !movePars.automove;
             break;
         case 'e':
-            if (scenePars.timeOfDay == 'starlessNight') scenePars.timeOfDay = 'foggyDay'
-            else if (scenePars.timeOfDay == 'foggyDay') scenePars.timeOfDay = 'starlessNight';
+            if (scenePars.timeOfDay == 'starryNight') {
+                scenePars.timeOfDay = 'foggyDay';
+            }
+            else if (scenePars.timeOfDay == 'foggyDay') {
+                scenePars.timeOfDay = 'starryNight'
+            };
             setScene();
             break;
         case ' ':
-            controls.reset();
+            initCamera(orbitCamera);
+            controls.update();
             break;
     }
 
@@ -864,6 +857,7 @@ function keyPressed(e){
 
 
 
+
 /************************** MAIN PROGRAM **************************/
 
 // Event listeners
@@ -919,7 +913,7 @@ scene.add(ambientLight);
 scene.add(sourceLight);
 scene.fog = fog;
 
-setScene(scenePars.timeOfDay, ambientLight, sourceLight);
+setScene();
 
 
 // Noise setting
@@ -936,6 +930,8 @@ let cell = init[1];
 // Water creation
 let water = initWater();
 
+// Remove loading overlay
+removeLoadingOverlay();
 
 // Rendering    
 loop();

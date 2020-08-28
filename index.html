@@ -4,7 +4,9 @@
 
     <head>
 
-        <link rel="stylesheet" type="text/css" href="main.css">
+        <link rel="stylesheet" type="text/css" href="css/index.css">
+
+        <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
 
         <meta charset="utf-8" />
         
@@ -13,15 +15,27 @@
     </head>
 
     <body>
-        
+
+        <div id="loadingOverlay">
+            <p id = 'loadingOverlayInner'>loading terrain, please wait...</p>
+        </div>
+
         <canvas id="canvas"></canvas>
 
-        <script src="three.js/build/three.min.js"></script>
-        <script src="three.js/examples/js/libs/stats.min.js"></script>
-        <script src="dat.gui/build/dat.gui.js"></script>
-        <script src="perlin.js"></script>
-        <script type = "module" src="diamondSquare.js"></script>
+        <!-- Threee.js library -->
+        <script src="assets/three.js/build/three.min.js"></script>
+        <script src="assets/three.js/examples/js/libs/stats.min.js"></script>
+        <script type = "module" src="assets/three.js/examples/jsm/objects/Water.js"></script>
 
+        <!-- dat.GUI library -->
+        <script src="assets/dat.gui/build/dat.gui.js"></script>
+        
+        <!-- Noise algorthms -->
+        <script src="assets/perlin.js"></script>
+
+        <!-- More libraries are imported inside the proceduralTerrain.js script. -->
+
+        <!-- Procedural terrain script -->
         <script type="module" src="proceduralTerrain.js"></script>
         
     </body>
