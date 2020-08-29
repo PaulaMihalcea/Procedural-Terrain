@@ -12,6 +12,10 @@ html, body {
     height: 100%;
 }
 
+.invisible {
+    display: none;
+}
+
 #loadingOverlay {
     position: absolute;
     left: 0;
