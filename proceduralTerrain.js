@@ -14,6 +14,8 @@ const matrixDist = Math.floor(matrixDimensions / 2); // Distance of the central 
 let width = window.innerWidth // Browser window width
 let height = window.innerHeight // Browser windows height
 
+let showMemeFlag = false;
+
 
 // Camera
 let cameraPars = {
@@ -150,6 +152,9 @@ let terrainPars = {
             }, 100);
 
                 // Add loading overlay
+                if (showMemeFlag) {
+                    showMeme();
+                }
                 addLoadingOverlay();
 
                 // Stop automove while regenerating terrain
@@ -332,9 +337,29 @@ let guiWaterLevel = waterFolder.add(waterPars, 'waterY', - terrainPars.maxHeight
 
 waterFolder.open();
 
+
+function showMeme () {
+    if (!showMemeFlag) {
+        document.getElementById('loadingOverlay').style.display = 'table';
+        document.getElementById('loadingOverlayP').style.display = 'none';
+        document.getElementById('meme').style.display = 'block';
+
+        showMemeFlag = true;
+    }
+    else if (showMemeFlag) {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('loadingOverlayP').style.display = 'table-cell';
+        document.getElementById('meme').style.display = 'none';
+
+        showMemeFlag = false;
+    }
+}
+
 // Camera
 gui.add({WASD: // Use W, A, S, D to pan camera (info)
-    function () {}
+    function () {
+        showMeme();
+    }
 }, 'WASD').name('<b>Use W, A, S, D to pan camera.</b>');
 
 gui.add({resetCamera: // Reset camera button
@@ -567,7 +592,7 @@ function moveOrbitCamera (axis, dir) {
 
 // Add loading overlay
 function addLoadingOverlay () {
-    document.getElementById('loadingOverlay').style.display = 'table';    
+    document.getElementById('loadingOverlay').style.display = 'table';
 }
 
 
@@ -839,6 +864,9 @@ function keyPressed(e){
         case ' ':
             initCamera(orbitCamera);
             controls.update();
+            break;
+        case 'm':
+            showMeme();
             break;
     }
 
