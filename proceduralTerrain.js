@@ -1,15 +1,15 @@
-import * as OC from './assets/three.js/examples/jsm/controls/OrbitControls.js';
-import {Water} from './assets/three.js/examples/jsm/objects/Water.js';
-import {diamondSquaredMap} from './assets/diamondSquare.js';
+import * as OC from './assets/three.js/examples/jsm/controls/OrbitControls.js'; // Three.js OrbitControls library
+import {Water} from './assets/three.js/examples/jsm/objects/Water.js'; // Three.js water shader
+import {diamondSquaredMap} from './assets/diamondSquare.js'; // Diamond-Square algorithm
 
 
 
 /************************** PARAMETERS **************************/
 
 // Generic constants & variables
-const matrixDimensions = 3; // Number of rows/columns of the terrain square matrix; must be 3 for the current parameters (larger dimensions are very slow)
+const matrixDimensions = 3; // Number of rows/columns of the terrain square matrix; must be 3 for the current parameters (larger dimensions are very slow and actually unnecessary)
 const totalTiles = Math.pow(matrixDimensions, 2); // Total number of tiles
-const matrixDist = Math.floor(matrixDimensions / 2); // Distance of the central tile from a side
+const matrixDist = Math.floor(matrixDimensions / 2); // Distance of the central tile from one side of the matrix (needed for some index calculations)
 
 let width = window.innerWidth // Browser window width
 let height = window.innerHeight // Browser windows height
@@ -17,20 +17,21 @@ let height = window.innerHeight // Browser windows height
 
 // Camera
 let cameraPars = {
-    fov: 100, // Field of view
+    fov: 45, // Field of view
     aspect: width / height, // Aspect ratio
     near: 0.1, // Near plane
     far: 1000, // Far plane
 
-    cameraX: 0,
-    cameraY: 8.5,
-    cameraZ: 30
+    cameraX: 0, // Camera x position
+    cameraY: 5, // Camera y position
+    cameraZ: 30 // Camera z position
 };
 
 
 // Orbit camera parameters (to avoid getting too close to the edge)
 let orbitCameraPars = {
     panSpeed: 0.1, // Terrain pan movement speed
+
     maxPanX: 100, // Maximum x axis pan
     maxPanZ: 100 // Maximum z axis pan
 };
@@ -38,24 +39,24 @@ let orbitCameraPars = {
 
 // Controls parameters
 let controlsPars = {
-    minDistance: 10,
-    maxDistance: 100,
-    maxPolarAngle: Math.PI / 2.05,
+    minDistance: 10, // Minimum zoom distance
+    maxDistance: 100, // Maximum zoom distance
+    maxPolarAngle: Math.PI / 2.05, // Maximum polar angle (user cannot rotate camera under terrain)
 
-    enableKeys: false,
-    enablePan: false
+    enableKeys: false, // Default keys are disabled
+    enablePan: false // Pan is disabled (W, A, S, D can be used instead)
 };
 
 
 // Stats panel
 let statsPars = {
-    showPanel: false
+    showPanel: false // Stats panel visibility flag
 };
 
 
 // Scene
 let scenePars = {
-    timeOfDay: 'foggyDay'
+    timeOfDay: 'foggyDay' // Current scene flag
 };
 
 
@@ -64,17 +65,17 @@ let movePars = {
     xDir: 0, // Movement direction along x axis
     zDir: 0, // Movement direction along z axis
 
-    movementSpeed: 0.05, // Terrain movement speed
+    movementSpeed: 0.01, // Terrain movement speed
     
-    automove: true,
-    movementDirection: 'down', // Automove direction
+    automove: true, // Automove flag
+    movementDirection: 'up', // Automove direction
 };
 
 
 // Update parameters
 let updatePars = {
     centralTileI: matrixDist, // Central tile x axis position in the tile matrix (the one that must be checked in order to generate/remove other tiles)
-    centralTileJ: matrixDist, // Central tile z axis position in the tile matrix
+    centralTileJ: matrixDist, // Central tile z axis position in the tile matrix (idem)
 };
 
 
@@ -83,14 +84,14 @@ let updatePars = {
 
 // Noise parameters
 let noisePars = {
-    noiseType: 'perlin',
+    noiseType: 'perlin', // Current noise type
 
     seed: Math.floor(Math.random() * 65536) + 1, // Perlin & Simplex noise seed (from 1 to 65536)
     diamondIterations: 6, // Diamond-Square iterations
 
-    noiseTypeNew: 'perlin',
-    noiseTypeGUI: 'perlin',
-    seedNew: 0
+    noiseTypeNew: 'perlin', // New noise type (selected by user)
+    noiseTypeGUI: 'perlin', // Noise type to be shown in the GUI (needed in order to switch correctly from one type to another in the GUI)
+    seedNew: 0 // New seed (selected by user)
 };
 
 
@@ -101,32 +102,35 @@ let terrainPars = {
 
     maxDistanceFactor: 2, // Distance after which the tile matrix should be updated (must be >=1 in order to avoid errors)
 
-    maxHeight: 5, // Default maximum terrain height
+    maxHeight: 5, // Default terrain height
 
-    maxHeightNew: 5,
+    maxHeightNew: 5, // New terrain height (selected by user)
 
     smoothnessPS: 7, // Terrain smoothness
 
-    smoothnessPSNew: 7,
+    smoothnessPSNew: 7, // New terrain smoothness (selected by user)
 
     tileTextureFilename: 'img/textures/terrainTexture.jpg',
     tileTextureRepeat: 30, // How many times should the texture repeat
 
     regenerateTerrain: 
+        // Regenerate terrain function (activated from GUI)
         function regenerateTerrain () {
 
-            setTimeout(function() {
-                movePars.automove = false;
-
+            setTimeout(function() { // Timeout function needed for the loading overlay to work correctly
+                
+                // Set new parameters
                 noisePars.noiseType = noisePars.noiseTypeNew;
                 noisePars.seed = noisePars.seedNew;
 
                 terrainPars.maxHeight = terrainPars.maxHeightNew;
                 terrainPars.smoothnessPS = terrainPars.smoothnessPSNew;
 
+                // Update GUI
                 guiWaterLevel.__min = - terrainPars.maxHeight + terrainPars.maxHeightNew / 2;
                 guiWaterLevel.__max = terrainPars.maxHeight - terrainPars.maxHeightNew / 2;
             
+                // Generate new terrain
                 for (let i = 0; i < matrixDimensions; i++) {
                     for (let j = 0; j < matrixDimensions; j++) {
                         scene.remove(terrain[i][j]);
@@ -137,37 +141,35 @@ let terrainPars = {
                 terrain = init[0];
                 cell = init[1];
 
+                // Camera & automove reset
                 initCamera(orbitCamera);
                 movePars.automove = true;
 
+                // Loading overlay removal
                 removeLoadingOverlay();
             }, 100);
 
+                // Add loading overlay
                 addLoadingOverlay();
+
+                // Stop automove while regenerating terrain
+                movePars.automove = false;
         }
 };
-
-function addLoadingOverlay () {
-    document.getElementById('loadingOverlay').style.display = 'table';    
-}
-
-function removeLoadingOverlay () {
-    document.getElementById('loadingOverlay').style.display = 'none';
-}
 
 
 // Water parameters
 let waterPars = {
-    color: 0x001e0f,
-    alpha: 1.0,
-    distortionScale: 3.7,
+    color: 0x001e0f, // Water color
+    alpha: 1, // Water transparency
+    distortionScale: 3.7, // Water distortion scale
 
-    waterTextureFilename: 'img/textures/waternormals.jpg',
-    textureWidth: 512,
-    textureHeight: 512,
+    waterTextureFilename: 'img/textures/waternormals.jpg', // Water texture filename
+    textureWidth: 512, // Water texture width
+    textureHeight: 512, // Water texture height
 
-    showWater: true,
-    waterY: -1
+    showWater: true, // Water visibility flag
+    waterY: -1 // Default water level
 };
 
 
@@ -177,168 +179,170 @@ let waterPars = {
 // Fog
 let fogPars = {
     fogNear: 0.1, // Fog near parameter
-    fogFar: 100 // Fog far parameter
+    fogFar: 70 // Fog far parameter
 };
 
 
 // Foggy day
 let foggyDayPars = {
-    ambientLightColor: 0xffffff,
-    ambientLightIntensity: 1,
+    ambientLightColor: 0xffffff, // Ambient (diffuse) light color
+    ambientLightIntensity: 0.8, // Ambient (diffuse) light intensity
 
-    ambientLightX: 0,
-    ambientLightY: 60,
-    ambientLightZ: 200,
+    ambientLightX: 0, // Ambient (diffuse) light x position
+    ambientLightY: 6, // Ambient (diffuse) light y position
+    ambientLightZ: 20, // Ambient (diffuse) light z position
 
-    sourceLightColor: 0x827268,
-    sourceLightIntensity: 1,
+    sourceLightColor: 0x827268, // Sunlight color
+    sourceLightIntensity: 1, // Sunlight intensity
 
-    sourceLightX: 50,
-    sourceLightY: 300,
-    sourceLightZ: 50,
+    sourceLightX: 5, // Sunlight x position
+    sourceLightY: 3, // Sunlight y position
+    sourceLightZ: 0, // Sunlight z position
 
-    sceneColor: 0xffffff
+    sceneColor: 0xffffff // Scene background & fog color
 };
 
 
 // Starry night
 let starryNightPars = {
-    ambientLightColor: 0x89a7f8,
-    ambientLightIntensity: 0.3,
+    ambientLightColor: 0x89a7f8, // Ambient (diffuse) light color
+    ambientLightIntensity: 0.5, // Ambient (diffuse) light intensity
 
-    ambientLightX: 0,
-    ambientLightY: 60,
-    ambientLightZ: 200,
+    ambientLightX: 0, // Ambient (diffuse) light x position
+    ambientLightY: 60, // Ambient (diffuse) light y position
+    ambientLightZ: 200, // Ambient (diffuse) light z position
 
-    sourceLightColor: 0x826a48,//0x827268,
-    sourceLightIntensity: 0.5,
+    sourceLightColor: 0xca9c76, // Moonlight color
+    sourceLightIntensity: 1, // Moonlight intensity
 
-    sourceLightX: 0,
-    sourceLightY: 100,
-    sourceLightZ: 25,
+    sourceLightX: 0, // Moonlight x position
+    sourceLightY: 10, // Moonlight y position
+    sourceLightZ: 5, // Moonlight z position
 
-    sceneColor: 0x96aecc,
-    sceneBackground:
-        function starryNightTexture () {
-            let loader = new THREE.CubeTextureLoader();
-            let starryNightTexture = loader.load([
-                'img/textures/starryNightTexturePX.png',
-                'img/textures/starryNightTextureNX.png',
-                'img/textures/starryNightTexturePY.png',
-                'img/textures/starryNightTextureNY.png',
-                'img/textures/starryNightTexturePZ.png',
-                'img/textures/starryNightTextureNZ.png'
-            ]);
-            
-            return starryNightTexture;
-        }
+    sceneColor: 0x090705, // Scene background & fog color
+    sceneBackground: loadSkybox('starryNight') // Scene background texture (skybox)
 };
 
 
 
 /************************** GUI **************************/
 
-let gui = new dat.GUI({width: 450});
+let gui = new dat.GUI({width: 450}); // GUI
 
 
 // Scene
-let sceneFolder = gui.addFolder('Scene');
+let sceneFolder = gui.addFolder('Scene'); // Scene folder
 
-sceneFolder.add(scenePars, 'timeOfDay', {
+sceneFolder.add(scenePars, 'timeOfDay', { // Time of day
     'Foggy day': 'foggyDay',
     'Starry night': 'starryNight'
     }).name('Scene (E)').onChange(
         function () {
-            setScene();
+            setScene(); // Set scene
         }
     ).listen();
-sceneFolder.add(statsPars, 'showPanel').name('Show stats panel (Z)').onChange(
+
+sceneFolder.add(statsPars, 'showPanel').name('Show stats panel (Z)').onChange( // Show stats panel
     function() {
-        statsPanelToggle();
+        statsPanelToggle(); // Toggle stats panel
     }
 ).listen();
 
 sceneFolder.open();
 
 // Movement
-let moveFolder = gui.addFolder('Movement');
+let moveFolder = gui.addFolder('Movement'); // Movement folder
 
-moveFolder.add(movePars, 'automove').name('Automove (Q)').listen();
+moveFolder.add(movePars, 'automove').name('Automove (Q)').listen(); // Automove
 
-moveFolder.add(movePars, 'movementDirection', {
+moveFolder.add(movePars, 'movementDirection', { // Movement direction
     'Up': 'down',
     'Down': 'up',
     'Left': 'right',
     'Right': 'left'
     }).name('Automove direction (ARROWS)').listen();
 
-moveFolder.add(movePars, 'movementSpeed', 0.001, 0.3, 0.001).name('Movement speed');
+moveFolder.add(movePars, 'movementSpeed', 0.001, 0.3, 0.001).name('Movement speed'); // Movement speed
 
 moveFolder.open();
 
 
 // Terrain
-let terrainFolder = gui.addFolder('Terrain');
+let terrainFolder = gui.addFolder('Terrain'); // Terrain folder
 
-terrainFolder.add(noisePars, 'noiseTypeNew', {
+terrainFolder.add(noisePars, 'noiseTypeNew', { // Noise type
     'Perlin noise': 'perlin',
     'Simplex noise': 'simplex',
-    'Diamond-square': 'diamondSquare'
+    'Diamond-Square': 'diamondSquare'
     }).name('Noise').onChange(
         function () {
             if (noisePars.noiseTypeNew == 'diamondSquare') {
+                // Hide Perlin & Simplex only controls
                 guiNoiseSeed.__li.setAttribute('style', 'display: none');
                 guiTerrainSmoothness.__li.setAttribute('style', 'display: none');
 
+                // Show Diamond-Square only controls
                 guiIterations.__li.setAttribute('style', null);
 
+                // Update terrain height
                 terrainPars.maxHeightNew = terrainPars.maxHeight;
             }
             else if ((noisePars.noiseTypeNew == 'perlin' && noisePars.noiseTypeGUI == 'diamondSquare') || (noisePars.noiseTypeNew == 'simplex' && noisePars.noiseTypeGUI == 'diamondSquare')) {
+                // Hide Diamond-Square only controls
                 guiIterations.__li.setAttribute('style', 'display: none');
 
+                // Show Perlin & Simplex only controls
                 guiNoiseSeed.__li.setAttribute('style', null);
                 guiTerrainSmoothness.__li.setAttribute('style', null);
 
+                // Update terrain height
                 terrainPars.maxHeightNew = terrainPars.maxHeight;
             }
+
+            // Set new noise type when finished
             noisePars.noiseTypeGUI = noisePars.noiseTypeNew;
         }
     ).listen();
 
-let guiNoiseSeed = terrainFolder.add(noisePars, 'seedNew', 1, 65536, 1).name('Noise seed').listen();
-let guiTerrainSmoothness = terrainFolder.add(terrainPars, 'smoothnessPSNew', 1.5, 15, 0.1).name('Terrain smoothness');
-let guiTerrainMaxHeight = terrainFolder.add(terrainPars, 'maxHeightNew', 0, 10, 0.1).name('Max terrain height').listen();
-let guiIterations = terrainFolder.add(noisePars, 'diamondIterations', 0, 7, 1).name('Iterations');
-guiIterations.__li.setAttribute('style', 'display: none');
+let guiNoiseSeed = terrainFolder.add(noisePars, 'seedNew', 1, 65536, 1).name('Noise seed').listen(); // Noise seed (Perlin & Simplex only)
+let guiTerrainMaxHeight = terrainFolder.add(terrainPars, 'maxHeightNew', 0, 10, 0.1).name('Terrain height').listen(); // Terrain height
+let guiTerrainSmoothness = terrainFolder.add(terrainPars, 'smoothnessPSNew', 1.5, 15, 0.1).name('Terrain smoothness'); // Terrain smoothness (Perlin & Simplex only)
+let guiIterations = terrainFolder.add(noisePars, 'diamondIterations', 0, 7, 1).name('Iterations'); // Iterations (Diamond-Square only)
+guiIterations.__li.setAttribute('style', 'display: none'); // Hide 'Iterations' menu (default noise type in GUI is Perlin)
 
-terrainFolder.add(terrainPars, 'regenerateTerrain').name('<b>Regenerate terrain (ENTER)</b>');
+terrainFolder.add(terrainPars, 'regenerateTerrain').name('<b>Regenerate terrain (ENTER)</b>'); // Regenerate terrain button
 
 terrainFolder.open();
 
 
 // Water
-let waterFolder = gui.addFolder('Water');
+let waterFolder = gui.addFolder('Water'); // Water folder
 
-waterFolder.add(waterPars, 'showWater').name('Show water (R)').onChange(
+waterFolder.add(waterPars, 'showWater').name('Show water (R)').onChange( // Show water
     function () {
-        water.visible = waterPars.showWater;
+        water.visible = waterPars.showWater; // Toggle water visibility
     }
     ).listen();
 
-let guiWaterLevel = waterFolder.add(waterPars, 'waterY', - terrainPars.maxHeight + terrainPars.maxHeight / 2, terrainPars.maxHeight - terrainPars.maxHeight / 2, 0.01).name('Water level').onChange(
+let guiWaterLevel = waterFolder.add(waterPars, 'waterY', - terrainPars.maxHeight + terrainPars.maxHeight / 2, terrainPars.maxHeight - terrainPars.maxHeight / 2, 0.01).name('Water level').onChange( // Water level
     function () {
-        water.position.y = waterPars.waterY;
+        water.position.y = waterPars.waterY; // Set new water level
     }
 );
 
 waterFolder.open();
 
-gui.add({resetCamera:
+// Camera
+gui.add({WASD: // Use W, A, S, D to pan camera (info)
+    function () {}
+}, 'WASD').name('<b>Use W, A, S, D to pan camera.</b>');
+
+gui.add({resetCamera: // Reset camera button
     function () {
-        initCamera(orbitCamera);
+        initCamera(orbitCamera); // Reset camera to initial parameters
     }
-}, 'resetCamera').name('Reset camera (SPACEBAR)').listen();
+}, 'resetCamera').name('<b>Reset camera (SPACEBAR)</b>').listen();
+
 
 gui.close();
 
@@ -350,7 +354,7 @@ gui.close();
 function initCamera (camera) {
     camera.position.set(cameraPars.cameraX, cameraPars.cameraY, cameraPars.cameraZ); // Set camera position
     camera.lookAt(cameraPars.cameraX, cameraPars.cameraY, cameraPars.cameraZ); // Set camera look at
-    camera.updateProjectionMatrix();
+    camera.updateProjectionMatrix(); // Update camera projection matrix (needed after changing its parameters)
 }
 
 
@@ -365,49 +369,75 @@ function initControls (controls) {
 }
 
 
+// Load skybox texture
+function loadSkybox (timeOfDay) {
+    let skyboxLoader = new THREE.CubeTextureLoader(); // Create texture loader
+    let skyboxTexture = 'undefined'; // Create texture
+
+    if (timeOfDay == 'foggyDay') {
+        // The 'Foggy Day' scene does not have a skybox, but only uses a plain background color.
+    }
+    else if (timeOfDay == 'starryNight') {
+        skyboxTexture = skyboxLoader.load([
+            'img/textures/starryNightTexturePX.png',
+            'img/textures/starryNightTextureNX.png',
+            'img/textures/starryNightTexturePY.png',
+            'img/textures/starryNightTextureNY.png',
+            'img/textures/starryNightTexturePZ.png',
+            'img/textures/starryNightTextureNZ.png'
+        ]);
+    }
+    
+    return skyboxTexture;
+}
+
+
 // Scene setting (switches between times of day)
 function setScene () {
     if (scenePars.timeOfDay == 'foggyDay') {
         
         // Ambient light
-        ambientLight.color.setHex(foggyDayPars.ambientLightColor);
-        ambientLight.intensity = foggyDayPars.ambientLightIntensity;
-        ambientLight.position.set(foggyDayPars.ambientLightX, foggyDayPars.ambientLightY, foggyDayPars.ambientLightZ);
+        ambientLight.color.setHex(foggyDayPars.ambientLightColor); // Set ambient light color
+        ambientLight.intensity = foggyDayPars.ambientLightIntensity; // Set ambient light intensity
+        ambientLight.position.set(foggyDayPars.ambientLightX, foggyDayPars.ambientLightY, foggyDayPars.ambientLightZ); // Set ambient light position
         ambientLight.castShadow = true; // Ambient light casts shadows
+        ambientLight.updateMatrix(); // Update ambient light matrix
 
         // Sunlight
-        sourceLight.color.setHex(foggyDayPars.sourceLightColor);
-        sourceLight.intensity = foggyDayPars.sourceLightIntensity;
-        sourceLight.position.set(foggyDayPars.sourceLightX, foggyDayPars.sourceLightY, foggyDayPars.sourceLightZ);
-        sourceLight.castShadow = false;
+        sourceLight.color.setHex(foggyDayPars.sourceLightColor); // Set sunlight color
+        sourceLight.intensity = foggyDayPars.sourceLightIntensity; // Set sunlight intensity
+        sourceLight.position.set(foggyDayPars.sourceLightX, foggyDayPars.sourceLightY, foggyDayPars.sourceLightZ); // Set sunlight position
+        sourceLight.castShadow = true; // Sunlight casts shadows
+        sourceLight.updateMatrix(); // Update sunlight matrix
 
         // Scene
-        scene.background = new THREE.Color(foggyDayPars.sceneColor);
+        scene.background = new THREE.Color(foggyDayPars.sceneColor); // Set scene background color
 
         // Fog
-        fog.color = new THREE.Color(foggyDayPars.sceneColor);
+        fog.color = new THREE.Color(foggyDayPars.sceneColor); // Set fog color
     }
+
     else if (scenePars.timeOfDay == 'starryNight') {
         
         // Ambient light
-        ambientLight.color.setHex(starryNightPars.ambientLightColor);
-        ambientLight.intensity = starryNightPars.ambientLightIntensity;
-        ambientLight.position.set(starryNightPars.ambientLightX, starryNightPars.ambientLightY, starryNightPars.ambientLightZ);
+        ambientLight.color.setHex(starryNightPars.ambientLightColor); // Set ambient light color
+        ambientLight.intensity = starryNightPars.ambientLightIntensity; // Set ambient light intensity
+        ambientLight.position.set(starryNightPars.ambientLightX, starryNightPars.ambientLightY, starryNightPars.ambientLightZ); // Set ambient light position
         ambientLight.castShadow = true; // Ambient light casts shadows
-        ambientLight.updateMatrix();
+        ambientLight.updateMatrix(); // Update ambient light matrix
 
         // Moonlight
-        sourceLight.color.setHex(starryNightPars.sourceLightColor);
-        sourceLight.intensity = starryNightPars.sourceLightIntensity;
-        sourceLight.position.set(starryNightPars.sourceLightX, starryNightPars.sourceLightY, starryNightPars.sourceLightZ);
-        sourceLight.castShadow = false;
-        sourceLight.updateMatrix();
+        sourceLight.color.setHex(starryNightPars.sourceLightColor); // Set moonlight color
+        sourceLight.intensity = starryNightPars.sourceLightIntensity; // Set moonlight intensity
+        sourceLight.position.set(starryNightPars.sourceLightX, starryNightPars.sourceLightY, starryNightPars.sourceLightZ); // Set moonlight position
+        sourceLight.castShadow = true; // Moonlight casts shadows
+        sourceLight.updateMatrix(); // Update moonlight matrix
 
         // Scene
-        scene.background = starryNightPars.sceneBackground();
+        scene.background = starryNightPars.sceneBackground; // Set scene background to skybox
 
         // Fog
-        fog.color = new THREE.Color(starryNightPars.sceneColor);
+        fog.color = new THREE.Color(starryNightPars.sceneColor); // Set fog color
     }
 }
 
@@ -417,7 +447,7 @@ function initTerrain () {
     let terrain = []; // Terrain matrix
     let cell = []; // Cell number (made of an (i, j) index); needed to create new tiles correctly
 
-    for(let k = 0; k < totalTiles; k++) {
+    for(let k = 0; k < totalTiles; k++) { // Init terrain and cell arrays as 2D arrays
         terrain[k] = [];
         cell[k] = [];
     }
@@ -439,27 +469,27 @@ function initTerrain () {
 
 // Water initialization
 function initWater () {
-    let waterGeometry = new THREE.PlaneBufferGeometry(terrainPars.tileLength * matrixDimensions + 1000, terrainPars.tileLength * matrixDimensions + 1000);
+    let waterGeometry = new THREE.PlaneBufferGeometry(terrainPars.tileLength * matrixDimensions + 1000, terrainPars.tileLength * matrixDimensions + 1000); // Create water geometry
 
     let water = new Water(waterGeometry,
-        {
-            textureWidth: waterPars.textureWidth, // TODO
-            textureHeight: waterPars.textureHeight,
-            waterNormals: new THREE.TextureLoader().load(waterPars.waterTextureFilename, function (texture)
+        { // Create water texture
+            textureWidth: waterPars.textureWidth, // Set water texture width
+            textureHeight: waterPars.textureHeight, // Set water texture height
+            waterNormals: new THREE.TextureLoader().load(waterPars.waterTextureFilename, function (texture) // Set water texture file
                 {
-                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping; // Set water texture wrapping
                 }),
-            alpha: waterPars.alpha,
-            waterColor: waterPars.color,
-            distortionScale: waterPars.distortionScale,
-            fog: scene.fog !== undefined
+            alpha: waterPars.alpha, // Set water alpha
+            waterColor: waterPars.color, // Set water color
+            distortionScale: waterPars.distortionScale, // Set water distortion scale
+            fog: scene.fog !== undefined // Set water fog
         }
     );
 
-    water.rotation.x = - Math.PI / 2;
-    water.position.y = waterPars.waterY;
+    water.rotation.x = - Math.PI / 2; // Rotate water (for correct viewing)
+    water.position.y = waterPars.waterY; // Set water level
 
-    scene.add(water);
+    scene.add(water); // Add water to scene
 
     return water;
 }
@@ -468,19 +498,19 @@ function initWater () {
 
 /************************** MOVEMENT FUNCTIONS **************************/
 
-// Increase tile position
+// Increase tile position (according to movement direction and speed)
 function increasePosition (axis, dir){
     if (axis == 'x') {
         for (let i = 0; i < matrixDimensions; i++) {
             for (let j = 0; j < matrixDimensions; j++) {
-                terrain[i][j].position.x += movePars.movementSpeed * dir;
+                terrain[i][j].position.x += movePars.movementSpeed * dir; // Increase tile position on x axis
             }
         }
     }
     else if (axis == 'z') {
         for (let i = 0; i < matrixDimensions; i++) {
             for (let j = 0; j < matrixDimensions; j++) {
-                terrain[i][j].position.z += movePars.movementSpeed * dir;
+                terrain[i][j].position.z += movePars.movementSpeed * dir; // Increase tile position on z axis
             }
         }
     }
@@ -510,9 +540,9 @@ function autoMove (direction){
 }
 
 
-// Camera movement
+// Camera movement (limited W, A, S, D pan)
 function moveOrbitCamera (axis, dir) {
-    if (axis == 'x') {
+    if (axis == 'x') { // x axis
         if ( (orbitCamera.position.x += orbitCameraPars.panSpeed * dir) > -orbitCameraPars.maxPanX && (orbitCamera.position.x += orbitCameraPars.panSpeed * dir) <= orbitCameraPars.maxPanX ) {
             orbitCamera.position.x += orbitCameraPars.panSpeed * dir;
         }
@@ -520,7 +550,8 @@ function moveOrbitCamera (axis, dir) {
             orbitCamera.position.x = orbitCameraPars.maxPanX * dir;
         }
     }
-    else if (axis == 'z') {
+
+    else if (axis == 'z') { // z axis
         if ( (orbitCamera.position.z += orbitCameraPars.panSpeed * dir) > -orbitCameraPars.maxPanZ && (orbitCamera.position.z += orbitCameraPars.panSpeed * dir) <= orbitCameraPars.maxPanZ ) {
             orbitCamera.position.z += orbitCameraPars.panSpeed * dir;
         }
@@ -534,6 +565,18 @@ function moveOrbitCamera (axis, dir) {
 
 /************************** UPDATE FUNCTIONS **************************/
 
+// Add loading overlay
+function addLoadingOverlay () {
+    document.getElementById('loadingOverlay').style.display = 'table';    
+}
+
+
+// Remove loading overlay
+function removeLoadingOverlay () {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+
 // Stats panel toggle
 function statsPanelToggle () {
     if (statsPars.showPanel) {
@@ -543,6 +586,7 @@ function statsPanelToggle () {
         document.body.removeChild(stats.domElement);
     }
 }
+
 
 // Get tile elevation
 function getElevation (tileVertices, xPos, zPos) {    
@@ -573,6 +617,7 @@ function getElevation (tileVertices, xPos, zPos) {
     return tileVertices;
 }
 
+
 // Add terrain tile
 function addTile (i, j) {
 
@@ -598,7 +643,7 @@ function addTile (i, j) {
     tile.position.x += xOffset -= terrainPars.tileLength; // x tile position (based on offset and tile length)
     tile.position.z += zOffset -= terrainPars.tileLength; // z tile position (based on offset and tile length)
     
-    tile.rotation.x = -Math.PI / 2; // Tile rotation (for correct viewing)
+    tile.rotation.x = - Math.PI / 2; // Tile rotation (for correct viewing)
 
     tile.geometry.attributes.position.array = getElevation(tile.geometry.attributes.position.array, tile.position.x, tile.position.z)
 
@@ -721,9 +766,13 @@ function update () {
 
 // Rendering
 function render () {
+    let time = performance.now() * 0.0001;
+    water.material.uniforms['time'].value += 0.1 / 60;
+
     requestAnimationFrame(render);
     renderer.render(scene, orbitCamera);
 }
+
 
 // Animation loop
 function loop () {
@@ -854,7 +903,6 @@ function keyPressed(e){
         }
     }
 }
-
 
 
 
