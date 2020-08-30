@@ -10,6 +10,8 @@ The <b>tile generation algorithm</b> that allows the new tiles to perfectly matc
 
 A series of <b>dat.GUI</b>, <b>mouse</b> and <b>keyboard controls</b> allow the user to change the terrain and scene parameters, as well as move around the camera.
 
+The project can be viewed in action here: [Procedural Terrain](https://paulamihalcea.github.io/Procedural-Terrain/).
+
 ---
 
 This project uses the following libraries:
@@ -28,4 +30,4 @@ The following images have been freely adapted by the author to be used as textur
 
 ---
 
-<i>The main script file (`proceduralTerrain.js`) has been <b>heavily commented</b> in the hopes that people trying to re-create this project will better understand how the scene and terrain generation works, since the author has deemed insufficiently documented other similar projects found around the web.</i>
+<i>The main script file, `proceduralTerrain.js`, has been <b>heavily commented</b> in the hopes that people trying to re-create this project will better understand how the scene and terrain generation works, since the author has deemed insufficiently documented other similar projects found around the web.</i>
