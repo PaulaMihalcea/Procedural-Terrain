@@ -276,10 +276,10 @@ moveFolder.open();
 let terrainFolder = gui.addFolder('Terrain'); // Terrain folder
 
 terrainFolder.add(noisePars, 'noiseTypeNew', { // Noise type
-    'Perlin noise': 'perlin',
-    'Simplex noise': 'simplex',
+    'Perlin': 'perlin',
+    'Simplex': 'simplex',
     'Diamond-Square': 'diamondSquare'
-    }).name('Noise').onChange(
+    }).name('Noise type').onChange(
         function () {
             if (noisePars.noiseTypeNew == 'diamondSquare') {
                 // Hide Perlin & Simplex only controls
