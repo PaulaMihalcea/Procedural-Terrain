@@ -28,6 +28,8 @@ The following images have been freely adapted by the author to be used as textur
 - [Water Normals Texture](https://github.com/mrdoob/three.js/tree/master/examples/textures) by by [Mr.doob](https://mrdoob.com/) (water)
 - [Night Sky Background](https://pngio.com/images/png-a1372140.html) from [PNGio.com](https://pngio.com/png) (night skybox)
 
+More references can be found in the documentation.
+
 ---
 
 <i>The main script file, `proceduralTerrain.js`, has been <b>heavily commented</b> in the hopes that people trying to re-create this project will better understand how the scene and terrain generation works, since the author has deemed insufficiently documented other similar projects found around the web.</i>
